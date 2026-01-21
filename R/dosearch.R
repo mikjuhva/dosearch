@@ -811,3 +811,12 @@ get_benchmark <- function(x, run_again = FALSE, include_rules = FALSE) {
     NULL
   }
 }
+
+#' Validates does the given formula identify causal effect
+validate_formula <- function(formula, query, graph) {
+  distributions <- parse_distributions(formula)
+  ident_formula <- dosearch(distributions, query, graph, control = list(validate_run = TRUE))
+  validate <- FALSE
+  if (ident_formula$formula == validate) validate = TRUE
+  return(validate)
+}

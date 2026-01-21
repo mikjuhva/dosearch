@@ -53,7 +53,8 @@ Rcpp::List initialize_dosearch(
   const bool& improve,
   const bool& heuristic,
   const char& md_sym,
-  const bool& verbose)
+  const bool& verbose,
+  const bool& validate_run)
 {
   dcongraph* g = new dcongraph(n);
   g->add_ivars();
@@ -76,8 +77,8 @@ Rcpp::List initialize_dosearch(
   derivation* d = new derivation();
 
   dosearch *s;
-  if (heuristic) s = new dosearch_heuristic(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose);
-  else s = new dosearch(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose);
+  if (heuristic) s = new dosearch_heuristic(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose, validate_run);
+  else s = new dosearch(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose, validate_run);
 
   if (draw_derivation) s->set_derivation(d);
 
@@ -92,7 +93,6 @@ Rcpp::List initialize_dosearch(
     std::vector<int> p = p_list[i];
     s->add_known(p[0], p[1], p[2], p[3]);
   }
-
   if (verbose) Rcpp::Rcout << "Initializing search" << std::endl;
 
   Rcpp::List result = s->initialize();

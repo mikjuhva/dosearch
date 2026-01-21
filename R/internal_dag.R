@@ -70,7 +70,8 @@ get_derivation_dag <- function(data, query, graph, transportability,
     control$improve,
     control$heuristic,
     control$md_sym,
-    control$verbose
+    control$verbose,
+    control$validate_run
   )
   res$call <- cl
   structure(

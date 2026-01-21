@@ -346,7 +346,8 @@ control_defaults <- function(control) {
     time_limit = -1.0,
     verbose = FALSE,
     warn = TRUE,
-    con_vars = character(0L)
+    con_vars = character(0L),
+    validate_run = FALSE
   )
   default_names <- names(default)
   control_names <- names(control)
@@ -402,4 +403,11 @@ is_dosearch <- function(x) {
 
 .onUnload <- function(libpath) {
   library.dynam.unload("dosearch", libpath)
+}
+
+# Parses distributions from latex formula
+parse_distributions <- function(latex_formula) {
+  distributions <- regmatches(latex_formula, gregexpr("[Pp][^)]*\\)", latex_formula))[[1]]
+  distributions <- paste(distributions, collapse = "\n")
+  distributions
 }

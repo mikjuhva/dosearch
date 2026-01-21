@@ -59,7 +59,7 @@ initialize_csisearch <- function(dir_lhs, dir_rhs, lab, p_list, q_vec, label_map
 #' @param md_sym Symbol used to represent active missing data mechanisms
 #' @param verbose Print diagnostics during search
 #' @noRd
-initialize_dosearch <- function(dir_lhs, dir_rhs, bi_lhs, bi_rhs, lab, p_list, q_vec, n, tr, sb, md_s, md_p, time_limit, rules, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, heuristic, md_sym, verbose) {
-    .Call(`_dosearch_initialize_dosearch`, dir_lhs, dir_rhs, bi_lhs, bi_rhs, lab, p_list, q_vec, n, tr, sb, md_s, md_p, time_limit, rules, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, heuristic, md_sym, verbose)
+initialize_dosearch <- function(dir_lhs, dir_rhs, bi_lhs, bi_rhs, lab, p_list, q_vec, n, tr, sb, md_s, md_p, time_limit, rules, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, heuristic, md_sym, verbose, validate_run) {
+    .Call(`_dosearch_initialize_dosearch`, dir_lhs, dir_rhs, bi_lhs, bi_rhs, lab, p_list, q_vec, n, tr, sb, md_s, md_p, time_limit, rules, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, heuristic, md_sym, verbose, validate_run)
 }
 

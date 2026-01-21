@@ -1,6 +1,6 @@
 #include "dosearch.h"
 
-dosearch::dosearch(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb):search(n_, tl, bm, br, dd, da, fa, im, verb) {
+dosearch::dosearch(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb,  const bool& valid):search(n_, tl, bm, br, dd, da, fa, im, verb), validate_run(valid) {
 }
 
 dosearch::~dosearch() {
@@ -669,7 +669,7 @@ void dosearch::get_ruleinfo(const int& ruleid, const int& y, const int& xw, cons
 
 // dosearch_heuristic
 
-dosearch_heuristic::dosearch_heuristic(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb):dosearch(n_, tl, bm, br, dd, da, fa, im, verb) {
+dosearch_heuristic::dosearch_heuristic(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):dosearch(n_, tl, bm, br, dd, da, fa, im, verb, valid) {
 }
 
 dosearch_heuristic::~dosearch_heuristic() {

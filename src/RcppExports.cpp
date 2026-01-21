@@ -42,8 +42,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // initialize_dosearch
-Rcpp::List initialize_dosearch(const std::vector<int>& dir_lhs, const std::vector<int>& dir_rhs, const std::vector<int>& bi_lhs, const std::vector<int>& bi_rhs, const Rcpp::StringVector& lab, const Rcpp::List& p_list, const std::vector<int>& q_vec, const int& n, const int& tr, const int& sb, const int& md_s, const int& md_p, const double& time_limit, const std::vector<int>& rules, const bool& benchmark, const bool& benchmark_rules, const bool& draw_derivation, const bool& draw_all, const bool& formula, const bool& improve, const bool& heuristic, const char& md_sym, const bool& verbose);
-RcppExport SEXP _dosearch_initialize_dosearch(SEXP dir_lhsSEXP, SEXP dir_rhsSEXP, SEXP bi_lhsSEXP, SEXP bi_rhsSEXP, SEXP labSEXP, SEXP p_listSEXP, SEXP q_vecSEXP, SEXP nSEXP, SEXP trSEXP, SEXP sbSEXP, SEXP md_sSEXP, SEXP md_pSEXP, SEXP time_limitSEXP, SEXP rulesSEXP, SEXP benchmarkSEXP, SEXP benchmark_rulesSEXP, SEXP draw_derivationSEXP, SEXP draw_allSEXP, SEXP formulaSEXP, SEXP improveSEXP, SEXP heuristicSEXP, SEXP md_symSEXP, SEXP verboseSEXP) {
+Rcpp::List initialize_dosearch(const std::vector<int>& dir_lhs, const std::vector<int>& dir_rhs, const std::vector<int>& bi_lhs, const std::vector<int>& bi_rhs, const Rcpp::StringVector& lab, const Rcpp::List& p_list, const std::vector<int>& q_vec, const int& n, const int& tr, const int& sb, const int& md_s, const int& md_p, const double& time_limit, const std::vector<int>& rules, const bool& benchmark, const bool& benchmark_rules, const bool& draw_derivation, const bool& draw_all, const bool& formula, const bool& improve, const bool& heuristic, const char& md_sym, const bool& verbose, const bool& validate_run);
+RcppExport SEXP _dosearch_initialize_dosearch(SEXP dir_lhsSEXP, SEXP dir_rhsSEXP, SEXP bi_lhsSEXP, SEXP bi_rhsSEXP, SEXP labSEXP, SEXP p_listSEXP, SEXP q_vecSEXP, SEXP nSEXP, SEXP trSEXP, SEXP sbSEXP, SEXP md_sSEXP, SEXP md_pSEXP, SEXP time_limitSEXP, SEXP rulesSEXP, SEXP benchmarkSEXP, SEXP benchmark_rulesSEXP, SEXP draw_derivationSEXP, SEXP draw_allSEXP, SEXP formulaSEXP, SEXP improveSEXP, SEXP heuristicSEXP, SEXP md_symSEXP, SEXP verboseSEXP, SEXP validate_runSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -70,14 +70,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const bool& >::type heuristic(heuristicSEXP);
     Rcpp::traits::input_parameter< const char& >::type md_sym(md_symSEXP);
     Rcpp::traits::input_parameter< const bool& >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(initialize_dosearch(dir_lhs, dir_rhs, bi_lhs, bi_rhs, lab, p_list, q_vec, n, tr, sb, md_s, md_p, time_limit, rules, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, heuristic, md_sym, verbose));
+    Rcpp::traits::input_parameter< const bool& >::type validate_run(validate_runSEXP);
+    rcpp_result_gen = Rcpp::wrap(initialize_dosearch(dir_lhs, dir_rhs, bi_lhs, bi_rhs, lab, p_list, q_vec, n, tr, sb, md_s, md_p, time_limit, rules, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, heuristic, md_sym, verbose, validate_run));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
     {"_dosearch_initialize_csisearch", (DL_FUNC) &_dosearch_initialize_csisearch, 21},
-    {"_dosearch_initialize_dosearch", (DL_FUNC) &_dosearch_initialize_dosearch, 23},
+    {"_dosearch_initialize_dosearch", (DL_FUNC) &_dosearch_initialize_dosearch, 24},
     {NULL, NULL, 0}
 };
 
