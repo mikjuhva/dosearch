@@ -1,7 +1,7 @@
 #include "search.h"
 
-search::search(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb):
-  n(n_), time_limit(tl), benchmark(bm), benchmark_rules(br), draw_derivation(dd), draw_all(da), formula(fa), improve(im), verbose(verb) {
+search::search(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):
+  n(n_), time_limit(tl), benchmark(bm), benchmark_rules(br), draw_derivation(dd), draw_all(da), formula(fa), improve(im), verbose(verb), validate_run(valid) {
 }
 
 search::~search() {
@@ -176,20 +176,34 @@ void search::find() {
         c = iquery.pp.c;
         d = iquery.pp.d;
         primi = iquery.primitive;
+        if (validate_run) {
+          Rcpp::Rcout << "DISTR PATH: " << iquery.pat.id[0] << "\n";
+          Rcpp::Rcout << "PATH RULE: " << iquery.pat.required_rules[0].number << "\n";
+          Rcpp::Rcout << "PATH SUBSET: " << iquery.pat.required_rules[0].subset  << "\n";
+        }
         for (unsigned int r = 0; r < rules.size(); r++) {
           ruleid = rules[r];
+          //if (validate_run) Rcpp::Rcout << "RULE TO TRY: " << ruleid << "\n";
           if (!valid_rule(ruleid, a, b, c, d, primi)) continue;
           z_lim = rule_limit(ruleid, z_size);
           for (unsigned int z_ind = 0; z_ind < z_lim; z_ind++) {
             required.primitive = TRUE;
             z = z_sets[z_ind];
+            //Rcpp::Rcout << "SUBSET TO TRY: " << z  << " RULE TO TRY: " << ruleid << "\n";
+            if (validate_run) {
+              if (!iquery.pat.required_rules.empty()) {
+                int allowed_rule = iquery.pat.required_rules[0].number;
+                int allowed_z = iquery.pat.required_rules[0].subset;
+                if (!valid_rule_with_z(ruleid, z, allowed_rule, allowed_z)) continue;
+              }
+            }
             enumerate_distribution(ruleid, a, b, c, d, z, cd, exist, req, found, iquery, required, remaining);
             if (found) return;
           }
         }
         i++;
       }
-    }
+    } 
   }
 }
 
@@ -202,10 +216,26 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
     while (cd > 0 && !found) {
       cd--;
       get_candidate(required, candidates.top());
+      
+      if (validate_run) {
+        distr cand = L[candidates.top()];
+        path pat = cand.pat;
+        if (pat.required_rules[0].number != 0) { // DEBUG CODE
+          if (std::abs(ruleid) != pat.required_rules[0].number) {
+            Rcpp::Rcout << "RULE SKIPPED1\n";
+            return;
+          }
+          if (check_paths(iquery.pat.id, pat.id)) {
+            Rcpp::Rcout << "RULE SKIPPED2\n";
+            return;
+          }
+        }
+      }
+      
       candidates.pop();
       assign_candidate(required);
       exist = ps[make_key(info.to)];
-      if (exist == 0) derive_distribution(iquery, required, ruleid, remaining, found);
+      if (exist == 0) derive_distribution(iquery, required, ruleid, remaining, found, z);
     }
   } else {
     exist = ps[make_key(info.to)];
@@ -215,9 +245,25 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
       req = ps[make_key(info.rp)];
       if (req > 0) {
         get_candidate(required, req);
-        derive_distribution(iquery, required, ruleid, remaining, found);
+        
+        if (validate_run) {
+          distr cand = L[req];
+          path pat = cand.pat;
+          if (pat.required_rules[0].number != 0) { // DEBUG CODE
+            if (std::abs(ruleid) != pat.required_rules[0].number) {
+              Rcpp::Rcout << "RULE SKIPPED3\n";
+              return;
+            }
+            if (check_paths({iquery.pat.id}, pat.id)) {
+              Rcpp::Rcout << "RULE SKIPPED4\n";
+              return;
+            }
+          }
+        }
+        
+        derive_distribution(iquery, required, ruleid, remaining, found, z);
       }
-    } else derive_distribution(iquery, required, ruleid, remaining, found);
+    } else derive_distribution(iquery, required, ruleid, remaining, found, z);
   }
   return;
 }
@@ -256,4 +302,17 @@ void search::draw(const distr& dist, const bool& recursive, derivation& d) {
       if (recursive) draw(pa2, recursive, d);
     }
   }
+}
+
+bool search::check_paths(const std::vector<int>& path1, const std::vector<int>& path2) {
+  for (int x : path1) {
+    for (int y : path2) {
+      Rcpp::Rcout << x << y << "\n";
+      Rcpp::Rcout << (x == y) << "\n";
+      if (x == y) {
+        return true;
+      }
+    }
+  }
+  return false;
 }

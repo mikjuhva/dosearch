@@ -15,6 +15,7 @@
 //' @param sb A set representing selection bias nodes
 //' @param md_s A set representing missing data switches
 //' @param md_p A set representing missing data proxies
+//' @param path_rules Rules to use for every input distribution in validation
 //' @param time_limit Time limit for the search (in hours)
 //' @param rules Overrides the set of default rules
 //' @param benchmark Record the search time
@@ -28,6 +29,7 @@
 //' @param heuristic Use search heuristic
 //' @param md_sym Symbol used to represent active missing data mechanisms
 //' @param verbose Print diagnostics during search
+//' @param validate_run Parameter for developing dosearch validation
 //' @noRd
 // [[Rcpp::export]]
 Rcpp::List initialize_dosearch(
@@ -43,6 +45,7 @@ Rcpp::List initialize_dosearch(
   const int& sb,
   const int& md_s,
   const int& md_p,
+  const Rcpp::List& path_rules,
   const double& time_limit,
   const std::vector<int>& rules,
   const bool& benchmark,
@@ -56,6 +59,7 @@ Rcpp::List initialize_dosearch(
   const bool& verbose,
   const bool& validate_run)
 {
+  Rcpp::Rcout << "start" << std::endl;
   dcongraph* g = new dcongraph(n);
   g->add_ivars();
   g->initialize_datanodes();
@@ -77,8 +81,7 @@ Rcpp::List initialize_dosearch(
   derivation* d = new derivation();
 
   dosearch *s;
-  if (heuristic) s = new dosearch_heuristic(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose, validate_run);
-  else s = new dosearch(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose, validate_run);
+  s = new dosearch(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose, validate_run);
 
   if (draw_derivation) s->set_derivation(d);
 
@@ -91,7 +94,8 @@ Rcpp::List initialize_dosearch(
   // Add known distributions
   for (int i = 0; i < p_list.size(); i++) {
     std::vector<int> p = p_list[i];
-    s->add_known(p[0], p[1], p[2], p[3]);
+    Rcpp::IntegerMatrix mat = path_rules[i];
+    s->add_known(p[0], p[1], p[2], p[3], mat);
   }
   if (verbose) Rcpp::Rcout << "Initializing search" << std::endl;
 

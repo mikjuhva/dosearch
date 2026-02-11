@@ -34,7 +34,8 @@ get_derivation_dag <- function(data, query, graph, transportability,
     md_s = 0L,
     md_p = 0L,
     md_t = 0L,
-    md_sym = control$md_sym
+    md_sym = control$md_sym,
+    path_rules = list() 
   )
   args <- transform_graph_dag(args, graph, missing_data)
   args <- parse_missing_data(args, missing_data)
@@ -45,8 +46,10 @@ get_derivation_dag <- function(data, query, graph, transportability,
   args <- parse_data_dag(args, data, missing_data)
   args <- validate_data_dag(args)
   args <- validate_query_dag(args)
+  args <- get_path_rules(args, formula)
   check_graph_size(2L * args$n) # times 2 due to intervention nodes
   check_valid_input(args, control, missing_data)
+  print(args)
   res <- initialize_dosearch(
     as.numeric(args$nums[args$dir_lhs]),
     as.numeric(args$nums[args$dir_rhs]),
@@ -60,6 +63,7 @@ get_derivation_dag <- function(data, query, graph, transportability,
     args$sb,
     args$md_s,
     args$md_p,
+    args$path_rules,
     control$time_limit,
     control$rules,
     control$benchmark,

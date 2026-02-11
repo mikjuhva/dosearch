@@ -25,15 +25,26 @@ struct output {
   bool valid, enumerate;
 };
 
+struct rule {
+  int number;
+  int subset;
+};
+
+struct path {
+  std::vector<int> id;
+  std::vector<rule> required_rules;
+};
+
 struct distr {
   int rule_num, index, score, pa1, pa2;
   bool primitive;
   p pp;
+  path pat;
 };
 
 class search {
 public:
-  search(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb);
+  search(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid);
   Rcpp::List initialize();
   void find();
   void set_derivation(derivation* d_);
@@ -42,8 +53,9 @@ public:
   bool equal_p(const p& p1, const p& p2) const;
   void draw(const distr& dist, const bool& recursive, derivation& d);
   void enumerate_distribution(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const int& z, int& cd, int& exist, int& req, bool& found, distr& iquery, distr& required, int& remaining);
+  bool check_paths(const std::vector<int>& path1, const std::vector<int>& path2);
   virtual void add_distribution(distr& nquery) = 0;
-  virtual void add_known(const int& a, const int& b, const int& c, const int& d) = 0;
+  virtual void add_known(const int& a, const int& b, const int& c, const int& d, const Rcpp::IntegerMatrix& mat) = 0;
   virtual distr& next_distribution(const int& i) = 0;
   virtual void assign_candidate(distr& required) = 0;
   virtual bool check_trivial() = 0;
@@ -56,8 +68,9 @@ public:
   virtual std::string derive_formula(distr& dist) = 0;
   virtual std::string to_string(const p& pp) const = 0;
   virtual bool valid_rule(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const bool& primi) const = 0;
+  virtual bool valid_rule_with_z(const int& ruleid, const int& z, const int& allowed_rule, const int& allowed_z) const = 0;
   virtual void apply_rule(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const int& z) = 0;
-  virtual void derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found) = 0;
+  virtual void derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found, const int& z) = 0;
   virtual void get_ruleinfo(const int& ruleid, const int& y, const int& x, const int& u, const int& v, const int& z) = 0;
   virtual void enumerate_candidates() = 0;
   virtual ~search();
@@ -70,6 +83,7 @@ public:
   const bool formula;
   const bool improve;
   const bool verbose;
+  const bool validate_run;
   p target;
   int index, lhs;
   derivation *deriv;

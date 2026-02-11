@@ -1,6 +1,6 @@
 #include "dosearch.h"
 
-dosearch::dosearch(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb,  const bool& valid):search(n_, tl, bm, br, dd, da, fa, im, verb), validate_run(valid) {
+dosearch::dosearch(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):search(n_, tl, bm, br, dd, da, fa, im, verb, valid) {
 }
 
 dosearch::~dosearch() {
@@ -68,7 +68,7 @@ void dosearch::set_md_symbol(const char& mds) {
   md_sym = mds;
 }
 
-void dosearch::add_known(const int& a, const int& b, const int& c, const int& d) {
+void dosearch::add_known(const int& a, const int& b, const int& c, const int& d, const Rcpp::IntegerMatrix& mat) {
   index++;
   p pp;
   distr iquery;
@@ -78,8 +78,36 @@ void dosearch::add_known(const int& a, const int& b, const int& c, const int& d)
   iquery.pa1 = 0;
   iquery.pa2 = 0;
   iquery.index = index;
-  iquery.primitive = true;
+  iquery.primitive = false;
   iquery.score = 0;
+  if (validate_run) {
+    iquery.pat.id = {index};
+    
+    std::vector<rule> rr;
+    rr.resize(mat.nrow());
+    for (int r = 0; r < mat.nrow(); ++r) {
+      rr[r].number = mat(r,0);
+      rr[r].subset = mat(r,1);
+    }
+    iquery.pat.required_rules = rr;
+    Rcpp::Rcout << "==== DEBUG required_rules ====\n";
+    
+    Rcpp::Rcout << "Number of rules: "
+                << iquery.pat.required_rules.size()
+                << "\n";
+    
+    for (std::size_t i = 0; i < iquery.pat.required_rules.size(); ++i) {
+      
+      const rule& r = iquery.pat.required_rules[i];
+      
+      Rcpp::Rcout << "  rule " << i
+                  << ": number=" << r.number
+                  << ", subset=" << r.subset
+                  << "\n";
+    }
+    
+    Rcpp::Rcout << "==== END DEBUG ====\n";
+  }
   L[index] = iquery;
   ps[make_key(pp)] = index;
   if (equal_p(pp, target)) {
@@ -104,7 +132,7 @@ distr& dosearch::next_distribution(const int& i) {
   return L[i];
 }
 
-void dosearch::derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found) {
+void dosearch::derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found, const int& z) {
   index++;
   distr nquery;
   nquery.index = index;
@@ -113,6 +141,11 @@ void dosearch::derive_distribution(const distr& iquery, const distr& required, c
   nquery.pa1 = iquery.index;
   nquery.pa2 = 0;
   nquery.rule_num = ruleid;
+  
+  if (validate_run) {
+    nquery.pat = derive_new_path(iquery.pat, ruleid, z, required);
+  }
+  
   if (info.rp.a > 0) nquery.pa2 = required.index;
   if (equal_p(info.to, target)) {
     if (verbose) {
@@ -136,6 +169,33 @@ void dosearch::derive_distribution(const distr& iquery, const distr& required, c
 void dosearch::add_distribution(distr& nquery) {
   L[index] = nquery;
   ps[make_key(nquery.pp)] = index;
+}
+
+path dosearch::derive_new_path(const path& pat, const int& ruleid, const int& z, const distr& required) {
+  path new_path = pat;
+  int rule_abs = std::abs(ruleid);
+  switch (rule_abs) {
+  case 4:
+    if (ruleid == pat.required_rules[0].number && z == pat.required_rules[0].subset) {
+      new_path.required_rules.erase(new_path.required_rules.begin());
+    }
+    
+  case 5:
+    
+    break;
+    
+  case 6:
+    if (ruleid == pat.required_rules[0].number)  {
+      new_path.required_rules.erase(new_path.required_rules.begin());
+      new_path.id.insert(
+        new_path.id.end(),
+        required.pat.id.begin(),
+        required.pat.id.end()
+      );
+    }
+    break;
+  }
+  return new_path;
 }
 
 void dosearch::enumerate_candidates() {
@@ -348,6 +408,37 @@ bool dosearch::valid_rule(const int& ruleid, const int& a, const int& b, const i
     }
   }
   return true;
+}
+
+// validate_run
+bool dosearch::valid_rule_with_z(const int& ruleid, const int& z, const int& allowed_rule, const int& allowed_z) const {
+  int rule_abs = std::abs(ruleid);
+  if (allowed_rule == 0) return true; // DEBUG CODE
+  if (rule_abs == 1 || rule_abs == 2 || rule_abs == 3) return true; // Do-calculus rules are never restricted
+  switch (rule_abs) {
+  case 4:
+    if (ruleid == allowed_rule && z == allowed_z) {
+      return true;
+    }
+    //Rcpp::Rcout << "RULE " << ruleid << " WITH SUBSET: " << z << " SKIPPED\n";
+    break;
+    
+  case 5:
+    return true;
+    break;
+    
+  case 6:
+    if (ruleid == allowed_rule)  {
+      return true;
+    }
+    //Rcpp::Rcout << "RULE" << ruleid << " WITH ANY SUBSET SKIPPED\n";
+    break;
+    
+  default:
+    Rcpp::Rcout << "VALIDATED RULE WAS NOT ANY OF 4-6 " << "IT WAS: "<< rule_abs << "\n";
+    break;
+  }
+  return false;
 }
 
 void dosearch::apply_rule(const int &ruleid, const int &a, const int &b, const int &c, const int &d, const int &z) {
@@ -669,101 +760,101 @@ void dosearch::get_ruleinfo(const int& ruleid, const int& y, const int& xw, cons
 
 // dosearch_heuristic
 
-dosearch_heuristic::dosearch_heuristic(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):dosearch(n_, tl, bm, br, dd, da, fa, im, verb, valid) {
-}
-
-dosearch_heuristic::~dosearch_heuristic() {
-}
-
-distr& dosearch_heuristic::next_distribution(const int& i) {
-    distr& top = *Q.top();
-    Q.pop();
-    return top;
-}
-
-void dosearch_heuristic::add_distribution(distr& nquery) {
-  if (md) nquery.score = compute_score_md(nquery.pp);
-  else nquery.score = compute_score(nquery.pp);
-  nquery.score = compute_score(nquery.pp);
-  L[index] = nquery;
-  ps[make_key(nquery.pp)] = index;
-  Q.push(&L[index]);
-}
-
-void dosearch_heuristic::add_known(const int& a, const int& b, const int& c, const int& d) {
-  index++;
-  p pp;
-  distr iquery;
-  pp.a = a; pp.b = b; pp.c = c; pp.d = d;
-  iquery.rule_num = 0;
-  iquery.pp = pp;
-  iquery.pa1 = 0;
-  iquery.pa2 = 0;
-  iquery.index = index;
-  iquery.primitive = true;
-  iquery.score = 0;
-  L[index] = iquery;
-  ps[make_key(pp)] = index;
-  Q.push(&L[index]);
-  if (equal_p(pp, target)) {
-    trivial_id = true;
-    target_dist.push_back(L[index]);
-  }
-  if (md) lhs = (lhs | a) | ((a & md_p) >> 2);
-  else lhs = lhs | a;
-  if (verbose) Rcpp::Rcout << "Adding known distribution: " << to_string(pp) << std::endl;
-}
-
-// Heuristic for search order
-int dosearch_heuristic::compute_score(const p& pp) const {
-  int score = 0;
-  int common_y = pp.a & target.a;
-  int common_x = pp.c & target.c;
-  int pp_w = pp.b - pp.c;
-  int target_w = target.b - target.c;
-  int common_z = pp_w & target_w;
-  score += 10 * set_size(common_y);
-  score -= 2 * set_size(target.a - common_y);
-  score += 5 * set_size(common_x);
-  score -= 2 * set_size(pp.c - common_x);
-  score -= 2 * set_size(target.c - common_x);
-  score += 3 * set_size(common_z);
-  score -= 1 * set_size(pp_w - common_z);
-  score -= 1 * set_size(target_w - common_z);
-
-  return(score);
-}
-
-// Heuristic for search order that takes proxy variables into account
-int dosearch_heuristic::compute_score_md(const p& pp) const {
-  int score = 0;
-  int pp_w = pp.b - pp.c;
-  int proxy_u = pp.a & md_p;
-  int proxy_w = pp_w & md_p;
-  int proxy_total = proxy_u | proxy_w;
-  int switch_total = (pp.a | pp_w) & md_s;
-  int proxy_needed = switch_total << 1;
-  int switch_needed = proxy_total >> 1;
-  int proxy_match = proxy_total & proxy_needed;
-  int proxy_mismatch = proxy_total - proxy_needed;
-  int switch_match = switch_total & switch_needed;
-  int switch_mismatch = switch_total - switch_needed;
-  int common_y = ((pp.a - proxy_u) | (proxy_u >> 2)) & target.a;
-  int common_x = pp.c & target.c;
-  int target_w = target.b - target.c;
-  int common_z = ((pp_w - proxy_w) | (proxy_w >> 2)) & target_w;
-  score += 10 * set_size(common_y);
-  score += 6 * set_size(proxy_match);
-  score += 6 * set_size(switch_match);
-  score -= 2 * set_size(proxy_mismatch);
-  score -= 2 * set_size(switch_mismatch);
-  score -= 2 * set_size(target.a - common_y);
-  score += 6 * set_size(common_x);
-  score -= 5 * set_size(pp.c - common_x);
-  score -= 2 * set_size(target.c - common_x);
-  score += 4 * set_size(common_z);
-  score -= 2 * set_size(pp_w - common_z);
-  score -= 2 * set_size(target_w - common_z);
-  score += 10 * set_size(pp.d);
-  return(score);
-}
+// dosearch_heuristic::dosearch_heuristic(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):dosearch(n_, tl, bm, br, dd, da, fa, im, verb, valid) {
+// }
+// 
+// dosearch_heuristic::~dosearch_heuristic() {
+// }
+// 
+// distr& dosearch_heuristic::next_distribution(const int& i) {
+//     distr& top = *Q.top();
+//     Q.pop();
+//     return top;
+// }
+// 
+// void dosearch_heuristic::add_distribution(distr& nquery) {
+//   if (md) nquery.score = compute_score_md(nquery.pp);
+//   else nquery.score = compute_score(nquery.pp);
+//   nquery.score = compute_score(nquery.pp);
+//   L[index] = nquery;
+//   ps[make_key(nquery.pp)] = index;
+//   Q.push(&L[index]);
+// }
+// 
+// void dosearch_heuristic::add_known(const int& a, const int& b, const int& c, const int& d) {
+//   index++;
+//   p pp;
+//   distr iquery;
+//   pp.a = a; pp.b = b; pp.c = c; pp.d = d;
+//   iquery.rule_num = 0;
+//   iquery.pp = pp;
+//   iquery.pa1 = 0;
+//   iquery.pa2 = 0;
+//   iquery.index = index;
+//   iquery.primitive = true;
+//   iquery.score = 0;
+//   L[index] = iquery;
+//   ps[make_key(pp)] = index;
+//   Q.push(&L[index]);
+//   if (equal_p(pp, target)) {
+//     trivial_id = true;
+//     target_dist.push_back(L[index]);
+//   }
+//   if (md) lhs = (lhs | a) | ((a & md_p) >> 2);
+//   else lhs = lhs | a;
+//   if (verbose) Rcpp::Rcout << "Adding known distribution: " << to_string(pp) << std::endl;
+// }
+// 
+// // Heuristic for search order
+// int dosearch_heuristic::compute_score(const p& pp) const {
+//   int score = 0;
+//   int common_y = pp.a & target.a;
+//   int common_x = pp.c & target.c;
+//   int pp_w = pp.b - pp.c;
+//   int target_w = target.b - target.c;
+//   int common_z = pp_w & target_w;
+//   score += 10 * set_size(common_y);
+//   score -= 2 * set_size(target.a - common_y);
+//   score += 5 * set_size(common_x);
+//   score -= 2 * set_size(pp.c - common_x);
+//   score -= 2 * set_size(target.c - common_x);
+//   score += 3 * set_size(common_z);
+//   score -= 1 * set_size(pp_w - common_z);
+//   score -= 1 * set_size(target_w - common_z);
+// 
+//   return(score);
+// }
+// 
+// // Heuristic for search order that takes proxy variables into account
+// int dosearch_heuristic::compute_score_md(const p& pp) const {
+//   int score = 0;
+//   int pp_w = pp.b - pp.c;
+//   int proxy_u = pp.a & md_p;
+//   int proxy_w = pp_w & md_p;
+//   int proxy_total = proxy_u | proxy_w;
+//   int switch_total = (pp.a | pp_w) & md_s;
+//   int proxy_needed = switch_total << 1;
+//   int switch_needed = proxy_total >> 1;
+//   int proxy_match = proxy_total & proxy_needed;
+//   int proxy_mismatch = proxy_total - proxy_needed;
+//   int switch_match = switch_total & switch_needed;
+//   int switch_mismatch = switch_total - switch_needed;
+//   int common_y = ((pp.a - proxy_u) | (proxy_u >> 2)) & target.a;
+//   int common_x = pp.c & target.c;
+//   int target_w = target.b - target.c;
+//   int common_z = ((pp_w - proxy_w) | (proxy_w >> 2)) & target_w;
+//   score += 10 * set_size(common_y);
+//   score += 6 * set_size(proxy_match);
+//   score += 6 * set_size(switch_match);
+//   score -= 2 * set_size(proxy_mismatch);
+//   score -= 2 * set_size(switch_mismatch);
+//   score -= 2 * set_size(target.a - common_y);
+//   score += 6 * set_size(common_x);
+//   score -= 5 * set_size(pp.c - common_x);
+//   score -= 2 * set_size(target.c - common_x);
+//   score += 4 * set_size(common_z);
+//   score -= 2 * set_size(pp_w - common_z);
+//   score -= 2 * set_size(target_w - common_z);
+//   score += 10 * set_size(pp.d);
+//   return(score);
+// }

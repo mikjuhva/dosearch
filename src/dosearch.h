@@ -12,10 +12,9 @@ public:
   int md_s, md_p, md_t, tr, sb, trsb;
   char md_sym;
   bool md;
-  const bool validate_run;
   dcongraph* g;
   virtual void add_distribution(distr& nquery);
-  virtual void add_known(const int& a, const int& b, const int& c, const int& d);
+  virtual void add_known(const int& a, const int& b, const int& c, const int& d, const Rcpp::IntegerMatrix& mat);
   virtual distr& next_distribution(const int& i);
   void assign_candidate(distr& required);
   bool check_trivial();
@@ -31,8 +30,10 @@ public:
   std::string dec_to_text(const int& dec, const int& enabled) const;
   std::string to_string(const p& pp) const;
   bool valid_rule(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const bool& primi) const;
+  bool valid_rule_with_z(const int& ruleid, const int& z, const int& allowed_rule, const int& allowed_z) const;
   void apply_rule(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const int& z);
-  void derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found);
+  void derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found, const int& z);
+  path derive_new_path(const path& pat, const int& ruleid, const int& z, const distr& required);
   void get_ruleinfo(const int& ruleid, const int& y, const int& xw, const int& x, const int& d, const int& z);
   void get_candidate(distr& required, const int& req);
   void enumerate_candidates();
