@@ -177,9 +177,8 @@ void search::find() {
         d = iquery.pp.d;
         primi = iquery.primitive;
         if (validate_run) {
+          Rcpp::Rcout << "DISTR: " << to_string(iquery.pp);
           Rcpp::Rcout << "DISTR PATH: " << iquery.pat.id[0] << "\n";
-          Rcpp::Rcout << "PATH RULE: " << iquery.pat.required_rules[0].number << "\n";
-          Rcpp::Rcout << "PATH SUBSET: " << iquery.pat.required_rules[0].subset  << "\n";
         }
         for (unsigned int r = 0; r < rules.size(); r++) {
           ruleid = rules[r];
@@ -305,14 +304,12 @@ void search::draw(const distr& dist, const bool& recursive, derivation& d) {
 }
 
 bool search::check_paths(const std::vector<int>& path1, const std::vector<int>& path2) {
-  for (int x : path1) {
-    for (int y : path2) {
-      Rcpp::Rcout << x << y << "\n";
-      Rcpp::Rcout << (x == y) << "\n";
-      if (x == y) {
-        return true;
-      }
-    }
-  }
-  return false;
+  int path1_min = *std::min_element(path1.begin(), path1.end());
+  int path1_max = *std::max_element(path1.begin(), path1.end());
+  
+  int path2_min = *std::min_element(path2.begin(), path2.end());
+  int path2_max = *std::max_element(path2.begin(), path2.end());
+  
+  if ((path1_max + 1 == path2_min) || (path2_max + 1 == path1_min)) return false;
+  return true;
 }

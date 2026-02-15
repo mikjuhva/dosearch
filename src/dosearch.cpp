@@ -78,7 +78,7 @@ void dosearch::add_known(const int& a, const int& b, const int& c, const int& d,
   iquery.pa1 = 0;
   iquery.pa2 = 0;
   iquery.index = index;
-  iquery.primitive = false;
+  iquery.primitive = true;
   iquery.score = 0;
   if (validate_run) {
     iquery.pat.id = {index};
@@ -137,15 +137,17 @@ void dosearch::derive_distribution(const distr& iquery, const distr& required, c
   distr nquery;
   nquery.index = index;
   nquery.pp = info.to;
-  nquery.primitive = is_primitive(iquery.primitive, required.primitive, ruleid);
-  nquery.pa1 = iquery.index;
-  nquery.pa2 = 0;
-  nquery.rule_num = ruleid;
   
   if (validate_run) {
     nquery.pat = derive_new_path(iquery.pat, ruleid, z, required);
+    nquery.primitive = false;
+  } else {
+    nquery.primitive = is_primitive(iquery.primitive, required.primitive, ruleid);
   }
   
+  nquery.pa1 = iquery.index;
+  nquery.pa2 = 0;
+  nquery.rule_num = ruleid;
   if (info.rp.a > 0) nquery.pa2 = required.index;
   if (equal_p(info.to, target)) {
     if (verbose) {
@@ -172,13 +174,16 @@ void dosearch::add_distribution(distr& nquery) {
 }
 
 path dosearch::derive_new_path(const path& pat, const int& ruleid, const int& z, const distr& required) {
+  Rcpp::Rcout << "PATH DERIVATION" << std::endl;
   path new_path = pat;
   int rule_abs = std::abs(ruleid);
   switch (rule_abs) {
   case 4:
     if (ruleid == pat.required_rules[0].number && z == pat.required_rules[0].subset) {
       new_path.required_rules.erase(new_path.required_rules.begin());
+      Rcpp::Rcout << "PATH RULE UPDATE BY RULE " << rule_abs << std::endl;
     }
+    break;
     
   case 5:
     
@@ -187,13 +192,24 @@ path dosearch::derive_new_path(const path& pat, const int& ruleid, const int& z,
   case 6:
     if (ruleid == pat.required_rules[0].number)  {
       new_path.required_rules.erase(new_path.required_rules.begin());
-      new_path.id.insert(
-        new_path.id.end(),
-        required.pat.id.begin(),
-        required.pat.id.end()
-      );
+      Rcpp::Rcout << "PATH RULE UPDATE BY RULE " << rule_abs << std::endl;
     }
     break;
+  }
+  Rcpp::Rcout << "OLD PATH" << std::endl;
+  for (size_t i = 0; i < pat.required_rules.size(); ++i) {
+    Rcpp::Rcout << "  [" << i << "] "
+                << "number = " << pat.required_rules[i].number
+                << ", subset = " << pat.required_rules[i].subset
+                << "\n";
+  }
+  Rcpp::Rcout << "NEW PATH" << std::endl;
+ 
+  for (size_t j = 0; j < new_path.required_rules.size(); ++j) {
+    Rcpp::Rcout << "  [" << j << "] "
+                << "number = " << new_path.required_rules[j].number
+                << ", subset = " << new_path.required_rules[j].subset
+                << "\n";
   }
   return new_path;
 }
@@ -256,11 +272,20 @@ std::string dosearch::derive_formula(distr& dist) {
     if (dist.pa2 > 0) {
       distr& pa2 = L[dist.pa2];
       std::string paf2 = derive_formula(pa2);
+      
+      if (validate_run) {
+        if (pa1.pat.id[0] > pa2.pat.id[0]) {
+          Rcpp::Rcout << "-----------PARENTS ORDER SWITCH--------------" << std::endl;
+          std::string paf1_temp = paf1;
+          paf1 = paf2;
+          paf2 = paf1_temp;
+        }
+      }
+  
       if (dist.primitive) formula = to_string(dist.pp);
       else {
         if (rsq == 36) {
-          if (paf1.length() < paf2.length()) formula = "\\left(" + paf1 + paf2 + "\\right)";
-          else formula = "\\left(" + paf2 + paf1 + "\\right)";
+          formula = "\\left(" + paf1 + paf2 + "\\right)";
         } else if (rsq == 49) {
           formula = "\\frac{" + paf1 + "}{" + paf2 + "}";
         } else if (rsq == 64) {
@@ -412,15 +437,18 @@ bool dosearch::valid_rule(const int& ruleid, const int& a, const int& b, const i
 
 // validate_run
 bool dosearch::valid_rule_with_z(const int& ruleid, const int& z, const int& allowed_rule, const int& allowed_z) const {
+  Rcpp::Rcout << "RULE TO TRY " << ruleid << " WITH Z: " << z << " \n";
+  Rcpp::Rcout << "ALLOWED RULE: " << allowed_rule;
+  Rcpp::Rcout << "ALLOWED SUBSET: " << allowed_z  << "\n";
   int rule_abs = std::abs(ruleid);
   if (allowed_rule == 0) return true; // DEBUG CODE
   if (rule_abs == 1 || rule_abs == 2 || rule_abs == 3) return true; // Do-calculus rules are never restricted
   switch (rule_abs) {
   case 4:
-    if (ruleid == allowed_rule && z == allowed_z) {
+    if (rule_abs == allowed_rule && z == allowed_z) {
       return true;
     }
-    //Rcpp::Rcout << "RULE " << ruleid << " WITH SUBSET: " << z << " SKIPPED\n";
+    Rcpp::Rcout << "RULE " << ruleid << " WITH SUBSET: " << z << " SKIPPED\n";
     break;
     
   case 5:
@@ -428,10 +456,10 @@ bool dosearch::valid_rule_with_z(const int& ruleid, const int& z, const int& all
     break;
     
   case 6:
-    if (ruleid == allowed_rule)  {
+    if (rule_abs == allowed_rule)  {
       return true;
     }
-    //Rcpp::Rcout << "RULE" << ruleid << " WITH ANY SUBSET SKIPPED\n";
+    Rcpp::Rcout << "RULE" << ruleid << " WITH ANY SUBSET SKIPPED\n";
     break;
     
   default:

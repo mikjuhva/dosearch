@@ -62,8 +62,22 @@ graph <- "
   w -> y
 "
 formula <- "\\sum_{z}\\left(\\sum_{w}p(z,w)p(y|x,z)\\right)"
+
 validate_formula(formula, query, graph)
 
 
+parse_rules <- function(formula) {
+  rules <- list()
+  return rules
+}
 
+
+rules <- list(
+  matrix(c(4L, 8L,
+           6L, 0L,
+           4L, 4L,
+           0L, 0L), ncol = 2, byrow = TRUE),
+  matrix(c(6L, 0L,
+           4L, 4L,
+           0L, 0L), ncol = 2, byrow = TRUE))
 
