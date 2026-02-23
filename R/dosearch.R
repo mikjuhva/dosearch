@@ -823,16 +823,3 @@ validate_formula <- function(formula, query, graph) {
   plot(ident_formula)
   return(validate)
 }
-
-get_path_rules <- function(args, formula) {
-  rules <- list(
-    matrix(c(4L, 8L,
-             6L, 0L,
-             4L, 4L,
-             0L, 0L), ncol = 2, byrow = TRUE),
-    matrix(c(6L, 0L,
-             4L, 4L,
-             0L, 0L), ncol = 2, byrow = TRUE))
-  args$path_rules <- rules
-  args
-}

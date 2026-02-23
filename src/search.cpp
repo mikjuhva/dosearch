@@ -224,7 +224,7 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
             Rcpp::Rcout << "RULE SKIPPED1\n";
             return;
           }
-          if (check_paths(iquery.pat.id, pat.id)) {
+          if (check_paths(iquery.pat, pat)) {
             Rcpp::Rcout << "RULE SKIPPED2\n";
             return;
           }
@@ -253,13 +253,12 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
               Rcpp::Rcout << "RULE SKIPPED3\n";
               return;
             }
-            if (check_paths({iquery.pat.id}, pat.id)) {
+            if (check_paths(iquery.pat, pat)) {
               Rcpp::Rcout << "RULE SKIPPED4\n";
               return;
             }
           }
         }
-        
         derive_distribution(iquery, required, ruleid, remaining, found, z);
       }
     } else derive_distribution(iquery, required, ruleid, remaining, found, z);
@@ -280,6 +279,7 @@ void search::get_candidate(distr& required, const int& req) {
   required.index = req;
   required.rule_num = reqd.rule_num;
   required.score = reqd.score;
+  required.pat = reqd.pat;
 }
 
 std::string search::make_key(const p& pp) const {
@@ -303,13 +303,17 @@ void search::draw(const distr& dist, const bool& recursive, derivation& d) {
   }
 }
 
-bool search::check_paths(const std::vector<int>& path1, const std::vector<int>& path2) {
-  int path1_min = *std::min_element(path1.begin(), path1.end());
-  int path1_max = *std::max_element(path1.begin(), path1.end());
+bool search::check_paths(const path& path1, const path& path2) {
   
-  int path2_min = *std::min_element(path2.begin(), path2.end());
-  int path2_max = *std::max_element(path2.begin(), path2.end());
+  // Paths have to be adjacent
+  int path1_min = *std::min_element(path1.id.begin(), path1.id.end());
+  int path1_max = *std::max_element(path1.id.begin(), path1.id.end());
+  int path2_min = *std::min_element(path2.id.begin(), path2.id.end());
+  int path2_max = *std::max_element(path2.id.begin(), path2.id.end());
+  if ((path1_max + 1 != path2_min) && (path2_max + 1 != path1_min)) return true;
   
-  if ((path1_max + 1 == path2_min) || (path2_max + 1 == path1_min)) return false;
-  return true;
+  // Paths have to belong same group
+  if (path1.required_rules[0].group != path2.required_rules[0].group) return true;
+  
+  return false;
 }

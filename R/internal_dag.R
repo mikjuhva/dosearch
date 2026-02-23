@@ -46,10 +46,9 @@ get_derivation_dag <- function(data, query, graph, transportability,
   args <- parse_data_dag(args, data, missing_data)
   args <- validate_data_dag(args)
   args <- validate_query_dag(args)
-  args <- get_path_rules(args, formula)
+  args <- parse_path_rules(args, formula)
   check_graph_size(2L * args$n) # times 2 due to intervention nodes
   check_valid_input(args, control, missing_data)
-  print(args)
   res <- initialize_dosearch(
     as.numeric(args$nums[args$dir_lhs]),
     as.numeric(args$nums[args$dir_rhs]),
@@ -534,6 +533,105 @@ validate_query_dag <- function(args) {
   )
   args
 }
+str(formula)
+
+#' Parse rule restrictions for rules 4 and 6.
+#'
+#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @param formula A `chr` latex formula including only products and sums.
+#' @noRd
+parse_path_rules <- function(args, formula) {
+  
+  # Remove commas from fromula.
+  formula <- gsub(",", "", formula, fixed = TRUE)
+  
+  # Change p(_ANYTHING_) parts of fromula to p(i),
+  # where i is the index of the path.
+  pat <- "[pP]\\([^)]*\\)|,"
+  m <- gregexpr(pat, formula, perl = TRUE)
+  hits <- regmatches(formula, m)[[1]]
+  repl <- ifelse(grepl(",", hits),"", paste0("p(", cumsum(!grepl(",", hits)), ")"))
+  regmatches(formula, m) <- list(repl)
+  
+  # Split the formula to character vector.
+  chars <- strsplit(formula, "")[[1]]
+  
+  # Init the rule list. 
+  path_n <- sum(chars == "p")
+  rules <- vector("list", path_n)
+  group = 1
+  
+  while(TRUE){
+    # Pick the subformula to handle (the deepest pattern between "[" and "]").
+    closing_brac <- min(which(chars == "]"))
+    opening_brac <- max(which(chars[1:closing_brac] == "["))
+    sub_chars <- chars[opening_brac:closing_brac]
+    
+    # Add product rule if there is multiple distributions on pattern.
+    sub_chars_path_indexes <- as.integer(sub_chars[grepl("^[0-9]+$", sub_chars)])
+    sub_chars_path_indexes_n <- length(sub_chars_path_indexes)
+    sub_chars_p <- which(sub_chars == "p")
+    if (length(sub_chars_p) > 1) {
+      starts <- sub_chars_p
+      ends <- c(sub_chars_p[-1] - 1, length(sub_chars) - 1)
+      
+      for (i in seq_along(starts)) {
+        one_path <- sub_chars[starts[i]:ends[i]]
+        path_indexes <- as.integer(one_path[grepl("^[0-9]+$", one_path)])
+        count <- sub_chars_path_indexes_n - length(path_indexes)
+        rules[path_indexes] <- lapply(rules[path_indexes],
+                                      function(x) rbind(x, c(6L, 0L, group, count)))
+      }
+      group <-  group + 1
+    }
+    
+    # Pick the variables to sum out (z_set). 
+    last_char <- opening_brac - 2 # -2 removes characters "}" and "[".
+    first_char <- max(which(chars[1:last_char] == "{")) + 1 # +1 removes character "{".
+    sub_chars <- chars[first_char:last_char]
+    z_set <- to_dec(args$nums[sub_chars], args$n)
+    
+    # Add marginalization rule for paths with z_set.
+    new_rule <- c(4L, as.integer(z_set), 0L, 0L)
+    rules[sub_chars_path_indexes] <- lapply(rules[sub_chars_path_indexes], 
+                                            function(x) rbind(x, unname(new_rule)))
+    
+    # Remove handled part of chars and replace them by handled paths as combined and without sum.
+    first_char <- max(which(chars[1:last_char] == "\\")) 
+    sub_chars <- chars[first_char:closing_brac]
+    combined_path <- strsplit(paste0("p(", paste(sub_chars_path_indexes, collapse = ""), ")"),"")[[1]]
+    left  <- if (first_char > 1) chars[1:(first_char - 1)] else character(0)
+    right <- if (closing_brac < length(chars)) chars[(closing_brac + 1):length(chars)] else character(0)
+    chars <- c(left, combined_path, right)
+    
+    # If all necessary rules are added to the rule list, there is no brackets on 
+    # in chars.
+    has_brackets <- any(chars == "]")
+    if (!has_brackets) {
+      # There still can be multiple paths in chars and if there is, we add product rule one more time. 
+      chars_path_indexes_n <- length(chars[grepl("^[0-9]+$", chars)])
+      chars_p <- which(chars == "p")
+      if(length(chars_p) > 1) {
+        starts <- chars_p
+        ends <- c(chars_p[-1] - 1, length(chars))
+        for (i in seq_along(starts)) {
+          one_path <- chars[starts[i]:ends[i]]
+          path_indexes <- as.integer(one_path[grepl("^[0-9]+$", one_path)])
+          count <- chars_path_indexes_n - length(path_indexes)
+          rules[path_indexes] <- lapply(rules[path_indexes],
+                                        function(x) rbind(x, c(6L, 0L, group, count)))
+        }
+      } 
+      # Add c(0L, 0L, 0L, 0L) to bottom of each path to denote that all necessary rules are
+      # used in validation.
+      rules <- lapply(rules, function(x) rbind(x, c(0L, 0L, 0L, 0L)))
+      break 
+    }
+  }
+  args$path_rules <- rules
+  args
+}
+
 
 #' Check Otherwise Valid Inputs For Potential Mistakes
 #'

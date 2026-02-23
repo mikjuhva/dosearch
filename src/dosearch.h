@@ -33,7 +33,7 @@ public:
   bool valid_rule_with_z(const int& ruleid, const int& z, const int& allowed_rule, const int& allowed_z) const;
   void apply_rule(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const int& z);
   void derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found, const int& z);
-  path derive_new_path(const path& pat, const int& ruleid, const int& z, const distr& required);
+  path derive_new_path(const path& pat2, const path& pat1,  const int& ruleid, const int& z);
   void get_ruleinfo(const int& ruleid, const int& y, const int& xw, const int& x, const int& d, const int& z);
   void get_candidate(distr& required, const int& req);
   void enumerate_candidates();

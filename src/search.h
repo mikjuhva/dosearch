@@ -28,6 +28,8 @@ struct output {
 struct rule {
   int number;
   int subset;
+  int group;
+  int count;
 };
 
 struct path {
@@ -53,7 +55,7 @@ public:
   bool equal_p(const p& p1, const p& p2) const;
   void draw(const distr& dist, const bool& recursive, derivation& d);
   void enumerate_distribution(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const int& z, int& cd, int& exist, int& req, bool& found, distr& iquery, distr& required, int& remaining);
-  bool check_paths(const std::vector<int>& path1, const std::vector<int>& path2);
+  bool check_paths(const path& path1, const path& path2);
   virtual void add_distribution(distr& nquery) = 0;
   virtual void add_known(const int& a, const int& b, const int& c, const int& d, const Rcpp::IntegerMatrix& mat) = 0;
   virtual distr& next_distribution(const int& i) = 0;
