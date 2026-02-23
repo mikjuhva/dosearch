@@ -105,6 +105,8 @@ void dosearch::add_known(const int& a, const int& b, const int& c, const int& d,
       Rcpp::Rcout << "  rule " << i
                   << ": number=" << r.number
                   << ", subset=" << r.subset
+                  << ", group=" << r.group
+                  << ", count=" << r.count
                   << "\n";
     }
     
@@ -151,7 +153,8 @@ void dosearch::derive_distribution(const distr& iquery, const distr& required, c
   nquery.pa2 = 0;
   nquery.rule_num = ruleid;
   if (info.rp.a > 0) nquery.pa2 = required.index;
-  if (equal_p(info.to, target)) {
+  
+  if (equal_p(info.to, target) & (nquery.pat.required_rules[0].number == 0)) {
     if (verbose) {
       if (info.rp.a > 0) Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " and " << to_string(info.rp) << " using rule: " << std::to_string(ruleid) << std::endl;
       else Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " using rule: " << std::to_string(ruleid) << std::endl;

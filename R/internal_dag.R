@@ -533,7 +533,6 @@ validate_query_dag <- function(args) {
   )
   args
 }
-str(formula)
 
 #' Parse rule restrictions for rules 4 and 6.
 #'
@@ -546,7 +545,8 @@ parse_path_rules <- function(args, formula) {
   formula <- gsub(",", "", formula, fixed = TRUE)
   
   # Change p(_ANYTHING_) parts of fromula to p(i),
-  # where i is the index of the path.
+  # where i is the index of the path. 
+  # TODO: Handle trivial cases where is no any sums in formula. 
   pat <- "[pP]\\([^)]*\\)|,"
   m <- gregexpr(pat, formula, perl = TRUE)
   hits <- regmatches(formula, m)[[1]]
