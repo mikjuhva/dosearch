@@ -197,118 +197,54 @@ children_unsrt <- function(node, G) {
 # Returns:
 # graph = igraph graph
 # order = all variables in topological order
-random_dag <- function(n_min = 5, n_max = 8, prob1 = 0.5, prob2 = 0.35) {
+random_dag <- function() {
   
-  if (n_min < 3) {
-    stop("n_min must be at least 3")
-  }
-  if (n_min > n_max) {
-    stop("n_min cannot be greater than n_max")
-  }
-  
-  # Determine number of vertices (uniformly random between n_min and n_max)
-  n <- ifelse(n_min == n_max, n_min, sample(n_min:n_max, 1))
+  prob_dir <- runif(1)
+  prob_bi_dir <- runif(1)
+  n <- sample(3:7, 1)
   
   # Create a pool of variable names and randomly sample n of them
-  variable_pool <- paste0("z", 1:n)
-  vars <- sample(variable_pool, n)
+  vars <- paste0("z", 1:n)
+
+  var_indexes <- 1:n
   
   # Force the last variable to be "y" (outcome variable)
-  vars[n] <- "y"
+  y_index <- sample(var_indexes, 1)
+  vars[y_index] <- "y"
   
   # Randomly select position for "x" (treatment variable) between 2 and n-1
-  x_ind <- sample(2:(n - 1), 1)
+  
+  x_ind <- sample(var_indexes[-y_index], 1)
   vars[x_ind] <- "x"
+  vars
   
-  # Initialize edge vectors (v = from, w = to)
-  v <- c()
-  w <- c()
-  
-  # Phase 1: Generate edges from x_ind to n with probability prob1
-  # Working backwards from y (position n) down to x (position x_ind)
-  for (i in (n - 1):x_ind) {
-    j <- n
-    while(j > i) {
+  edges <- matrix(character(0), nrow = 0, ncol = 2)
+  for (i in var_indexes) {
+    for(j in var_indexes[-i]) {
       u <- runif(1)
-      if (u < prob1) {
-        # Add edge from vars[i] to vars[j]
-        v <- c(v, vars[i])
-        w <- c(w, vars[j])
+      if (u < prob_dir) {
+        edges <- rbind(edges, cbind(vars[i], vars[j]))
+        temp_graph <- graph_from_edgelist(edges, directed = TRUE)
+        if(!is_dag(temp_graph)) edges <- edges[-nrow(edges),]
       }
-      j <- j - 1
     }
   } 
+  dir_edge_n <- nrow(edges)
   
-  # Create temporary graph to check if x is ancestor of y
-  if (length(v) > 0) {
-    temp_edges <- cbind(v, w)
-    temp_dag <- graph_from_data_frame(data.frame(from = v, to = w), 
-                                      directed = TRUE, 
-                                      vertices = data.frame(name = vars))
-  } else {
-    # If no edges yet, create empty graph with all vertices
-    temp_dag <- make_empty_graph(n = n, directed = TRUE)
-    V(temp_dag)$name <- vars
-  }
-  
-  # Ensure x is an ancestor of y (there's a causal path from x to y)
-  if ("y" %in% V(temp_dag)$name && "x" %in% V(temp_dag)$name) {
-    if (!"x" %in% ancestors("y", temp_dag)) {
-      # If x is not an ancestor of y, add direct edge x -> y
-      v <- c(v, "x")
-      w <- c(w, "y")
-    }
-  } else {
-    # If y or x doesn't exist in graph yet, add the edge x -> y
-    v <- c(v, "x")
-    w <- c(w, "y")
-  }
-  
-  # Phase 2: Generate edges from position 1 to x_ind-1 with probability prob2
-  # These are variables that come before x in topological order
-  for (i in (x_ind - 1):1) {
-    j <- n
-    while(j > i) {
+  # Add bidirected edges
+  for (i in var_indexes) {
+    for(j in var_indexes[-i]) {
       u <- runif(1)
-      if (u < prob2) {
-        # Add edge from vars[i] to vars[j]
-        v <- c(v, vars[i])
-        w <- c(w, vars[j])
+      if (u < prob_bi_dir) {
+        edges <- rbind(edges, cbind(vars[i], vars[j]))
+        edges <- rbind(edges, cbind(vars[j], vars[i]))
       }
-      j <- j - 1
-    }
-  } 
-  
-  # Ensure all variables are connected to the graph
-  # For any isolated vertex, connect it to the next vertex in order
-  for (i in 1:n) {
-    if ((!vars[i] %in% v) & (!vars[i] %in% w)) {
-      v <- c(v, vars[i])
-      w <- c(w, vars[i + 1])
-    } 
-  }
-  
-  # Create the DAG from collected edges
-  edges <- cbind(v, w)
-  dag <- graph_from_edgelist(edges, directed = TRUE)
-  
-  # Ensure all variables are ancestors of y (connected to outcome)
-  y_anc <- ancestors("y", dag)
-  for (i in 1:(n - 1)) {
-    if (!vars[i] %in% y_anc) {
-      # If vars[i] is not an ancestor of y, connect it to a random ancestor of y
-      v <- c(v, vars[i])
-      poss_w <- vars[(i + 1):n]  # Only connect to later variables (maintain topological order)
-      poss_w <- poss_w[poss_w %in% y_anc]  # Only connect to variables that are ancestors of y
-      w <- c(w, sample(poss_w, 1))
     }
   }
-  
-  # Rebuild final DAG with all edges
-  edges <- cbind(v, w)
+  edges_rows_n <- nrow(edges)
   dag <- graph_from_edgelist(edges, directed = TRUE)
-  
-  return(list(graph = dag, order = vars))
+  if(edges_rows_n > dir_edge_n) dag <- set.edge.attribute(graph = dag, name = "description", index = (dir_edge_n+1):edges_rows_n, value = "U")
+  return(dag)
 }
 
 random_dag_with_vars <- function(vars, prob1 = 0.5, prob2 = 0.35) {
