@@ -177,8 +177,13 @@ void search::find() {
         d = iquery.pp.d;
         primi = iquery.primitive;
         if (validate_run) {
-          Rcpp::Rcout << "DISTR: " << to_string(iquery.pp);
-          Rcpp::Rcout << "DISTR PATH: " << iquery.pat.id[0] << "\n";
+          Rcpp::Rcout << "DISTR PATH: ";
+          for (size_t i = 0; i < iquery.pat.id.size(); ++i) {
+            Rcpp::Rcout << iquery.pat.id[i];
+            if (i + 1 < iquery.pat.id.size())
+              Rcpp::Rcout << " ";
+          }
+          Rcpp::Rcout << "\n";
         }
         for (unsigned int r = 0; r < rules.size(); r++) {
           ruleid = rules[r];
@@ -219,15 +224,13 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
       if (validate_run) {
         distr cand = L[candidates.top()];
         path pat = cand.pat;
-        if (pat.required_rules[0].number != 0) { // DEBUG CODE
-          if (std::abs(ruleid) != pat.required_rules[0].number) {
-            Rcpp::Rcout << "RULE SKIPPED1\n";
-            return;
-          }
-          if (check_paths(iquery.pat, pat)) {
-            Rcpp::Rcout << "RULE SKIPPED2\n";
-            return;
-          }
+        if (std::abs(ruleid) != pat.required_rules[0].number) {
+          //Rcpp::Rcout << "RULE SKIPPED1\n";
+          return;
+        }
+        if (check_paths(iquery.pat, pat)) {
+          //Rcpp::Rcout << "RULE SKIPPED2\n";
+          return;
         }
       }
       
@@ -250,11 +253,11 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
           path pat = cand.pat;
           if (pat.required_rules[0].number != 0) { // DEBUG CODE
             if (std::abs(ruleid) != pat.required_rules[0].number) {
-              Rcpp::Rcout << "RULE SKIPPED3\n";
+              //Rcpp::Rcout << "RULE SKIPPED3\n";
               return;
             }
             if (check_paths(iquery.pat, pat)) {
-              Rcpp::Rcout << "RULE SKIPPED4\n";
+             // Rcpp::Rcout << "RULE SKIPPED4\n";
               return;
             }
           }

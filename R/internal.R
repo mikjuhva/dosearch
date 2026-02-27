@@ -407,7 +407,133 @@ is_dosearch <- function(x) {
 
 # Parses distributions from latex formula
 parse_distributions <- function(latex_formula) {
-  distributions <- regmatches(latex_formula, gregexpr("[Pp][^)]*\\)", latex_formula))[[1]]
+  distributions <- regmatches(latex_formula, gregexpr("[p][^)]*\\)", latex_formula))[[1]]
   distributions <- paste(distributions, collapse = "\n")
   distributions
+}
+
+# Orders variables in identification formula based on reference formula.
+reorder_formula_like <- function(ref, target) {
+  
+  trim <- function(x) gsub("^\\s+|\\s+$", "", x)
+  
+  split_vars <- function(s) {
+    s <- trim(s)
+    if (nchar(s) == 0) return(character(0))
+    parts <- unlist(strsplit(s, ",", fixed = TRUE), use.names = FALSE)
+    trim(parts[parts != ""])
+  }
+  
+  join_vars <- function(v) paste(v, collapse = ",")
+  
+  reorder_by <- function(vec, order) {
+    in_order <- order[order %in% vec]
+    rest <- vec[!(vec %in% in_order)]
+    c(in_order, rest)
+  }
+  
+  find_matches <- function(text, pattern) {
+    m <- gregexpr(pattern, text, perl = TRUE)[[1]]
+    if (length(m) == 1 && m[1] == -1) return(list())
+    lens <- attr(m, "match.length")
+    
+    out <- vector("list", length(m))
+    for (i in seq_along(m)) {
+      whole <- substr(text, m[i], m[i] + lens[i] - 1)
+      rr <- regexec(pattern, whole, perl = TRUE)
+      regm <- regmatches(whole, rr)[[1]]
+      out[[i]] <- list(
+        start = m[i],
+        len = lens[i],
+        whole = whole,
+        cap = if (length(regm) >= 2) regm[2] else ""
+      )
+    }
+    out
+  }
+  
+  replace_matches <- function(text, pattern, ref_matches, rebuild_fun) {
+    tar_matches <- find_matches(text, pattern)
+    n <- min(length(ref_matches), length(tar_matches))
+    if (n == 0) return(text)
+    
+    for (i in seq(n, 1)) {
+      new_whole <- rebuild_fun(
+        tar_matches[[i]]$whole,
+        ref_matches[[i]]$cap,
+        tar_matches[[i]]$cap
+      )
+      
+      st <- tar_matches[[i]]$start
+      en <- st + tar_matches[[i]]$len - 1
+      
+      text <- paste0(
+        substr(text, 1, st - 1),
+        new_whole,
+        substr(text, en + 1, nchar(text))
+      )
+    }
+    
+    text
+  }
+  
+  # --- 1) reorder \sum_{...} ---
+  sum_pat <- "\\\\sum_\\{([^}]*)\\}"
+  sums_ref <- find_matches(ref, sum_pat)
+  
+  target <- replace_matches(
+    target, sum_pat, sums_ref,
+    rebuild_fun = function(whole, ref_cap, tar_cap) {
+      
+      ref_vars <- split_vars(ref_cap)
+      tar_vars <- split_vars(tar_cap)
+      
+      new_vars <- reorder_by(tar_vars, ref_vars)
+      
+      sub("\\\\sum_\\{[^}]*\\}",
+          paste0("\\\\sum_{", join_vars(new_vars), "}"),
+          whole, perl = TRUE)
+    }
+  )
+  
+  # --- 2) reorder p(...) ---
+  p_pat <- "p\\(([^)]*)\\)"
+  ps_ref <- find_matches(ref, p_pat)
+  
+  target <- replace_matches(
+    target, p_pat, ps_ref,
+    rebuild_fun = function(whole, ref_cap, tar_cap) {
+      
+      split_cond <- function(s) {
+        pos <- regexpr("\\|", s, perl = TRUE)[1]
+        if (pos == -1) return(list(left = s, right = NULL))
+        list(
+          left = substr(s, 1, pos - 1),
+          right = substr(s, pos + 1, nchar(s))
+        )
+      }
+      
+      rc <- split_cond(ref_cap)
+      tc <- split_cond(tar_cap)
+      
+      ref_left <- split_vars(rc$left)
+      tar_left <- split_vars(tc$left)
+      new_left <- reorder_by(tar_left, ref_left)
+      
+      if (is.null(tc$right)) {
+        new_inside <- join_vars(new_left)
+      } else {
+        ref_right <- if (is.null(rc$right)) character(0) else split_vars(rc$right)
+        tar_right <- split_vars(tc$right)
+        new_right <- reorder_by(tar_right, ref_right)
+        new_inside <- paste0(join_vars(new_left), "|", join_vars(new_right))
+      }
+      
+      sub("p\\([^)]*\\)",
+          paste0("p(", new_inside, ")"),
+          whole, perl = TRUE)
+    }
+  )
+  
+  target
 }

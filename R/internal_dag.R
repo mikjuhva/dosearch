@@ -2,7 +2,7 @@
 #'
 #' @inheritParams dosearch
 #' @noRd
-get_derivation_dag <- function(data, query, graph, transportability,
+get_derivation_dag <- function(data, query, graph, cand_formula, transportability,
                                selection_bias, missing_data, control) {
   control <- control_defaults(control)
   cl <- list(
@@ -37,7 +37,7 @@ get_derivation_dag <- function(data, query, graph, transportability,
     md_sym = control$md_sym,
     path_rules = list() 
   )
-  args <- transform_graph_dag(args, graph, missing_data)
+  args <- transform_graph_dag(args, graph, missing_data, cand_formula)
   args <- parse_missing_data(args, missing_data)
   args <- parse_transportability(args, transportability)
   args <- parse_selection_bias(args, selection_bias)
@@ -46,9 +46,10 @@ get_derivation_dag <- function(data, query, graph, transportability,
   args <- parse_data_dag(args, data, missing_data)
   args <- validate_data_dag(args)
   args <- validate_query_dag(args)
-  args <- parse_path_rules(args, formula)
+  args <- parse_path_rules(args, cand_formula)
   check_graph_size(2L * args$n) # times 2 due to intervention nodes
   check_valid_input(args, control, missing_data)
+  print(args)
   res <- initialize_dosearch(
     as.numeric(args$nums[args$dir_lhs]),
     as.numeric(args$nums[args$dir_rhs]),
@@ -98,7 +99,7 @@ get_derivation_dag <- function(data, query, graph, transportability,
 #' @param args A `list` of arguments for `initialize_dosearch`
 #' @param graph The graph as a `character` string.
 #' @noRd
-transform_graph_dag <- function(args, graph, missing_data) {
+transform_graph_dag <- function(args, graph, missing_data, cand_formula) {
   if (!nzchar(graph) && is.null(missing_data)) {
     stop_("Invalid graph, the graph is empty.")
   }
@@ -278,6 +279,8 @@ reorder_variables <- function(args) {
   args$nums <- seq_len(args$n)
   names(args$vars) <- args$nums
   names(args$nums) <- args$vars
+  
+  
   if (args$n_tr > 0L) {
     args$tr_nums <- seq.int(
       args$n - args$n_tr - args$n_sb + 1L,
@@ -540,21 +543,79 @@ validate_query_dag <- function(args) {
 #' @param formula A `chr` latex formula including only products and sums.
 #' @noRd
 parse_path_rules <- function(args, formula) {
+  s <- formula
+  n <- nchar(s)
+  tokens <- character(0)
+  i <- 1
+  p_idx <- 0
   
-  # Remove commas from fromula.
-  formula <- gsub(",", "", formula, fixed = TRUE)
-  
-  # Change p(_ANYTHING_) parts of fromula to p(i),
-  # where i is the index of the path. 
-  # TODO: Handle trivial cases where is no any sums in formula. 
-  pat <- "[pP]\\([^)]*\\)|,"
-  m <- gregexpr(pat, formula, perl = TRUE)
-  hits <- regmatches(formula, m)[[1]]
-  repl <- ifelse(grepl(",", hits),"", paste0("p(", cumsum(!grepl(",", hits)), ")"))
-  regmatches(formula, m) <- list(repl)
-  
-  # Split the formula to character vector.
-  chars <- strsplit(formula, "")[[1]]
+  while (i <= n) {
+    ch <- substr(s, i, i)
+    
+    # --- { ... } : kerää pilkulla erotellut palat yhtenä tokeneina ---
+    if (ch == "{") {
+      tokens <- c(tokens, "{")
+      i <- i + 1
+      
+      buf <- ""
+      while (i <= n) {
+        ch <- substr(s, i, i)
+        
+        if (ch == "}") {
+          if (nzchar(buf)) {
+            tokens <- c(tokens, buf)
+            buf <- ""
+          }
+          tokens <- c(tokens, "}")
+          i <- i + 1
+          break
+          
+        } else if (ch == ",") {
+          if (nzchar(buf)) {
+            tokens <- c(tokens, buf)
+            buf <- ""
+          }
+          i <- i + 1
+          
+        } else if (grepl("\\s", ch)) {
+          i <- i + 1
+          
+        } else {
+          buf <- paste0(buf, ch)
+          i <- i + 1
+        }
+      }
+      
+      # --- P(...) tai p(...) -> p(1), p(2), ... (ulkopuolella ja myös { } sisällä jos niitä on) ---
+    } else if ((ch == "P" || ch == "p") && i < n && substr(s, i + 1, i + 1) == "(") {
+      # Etsi matching ')'
+      j <- i + 2
+      depth <- 1
+      while (j <= n && depth > 0) {
+        cj <- substr(s, j, j)
+        if (cj == "(") depth <- depth + 1
+        if (cj == ")") depth <- depth - 1
+        j <- j + 1
+      }
+      
+      # Jos löytyi ')', korvaa koko P(...) / p(...) -> p(k)
+      if (depth == 0) {
+        p_idx <- p_idx + 1
+        tokens <- c(tokens, "p", "(", as.character(p_idx), ")")
+        i <- j  # j on jo yhden yli ')'
+      } else {
+        # varmuus: jos ei löydy sulkua, käsittele merkkinä
+        tokens <- c(tokens, ch)
+        i <- i + 1
+      }
+      
+      # --- muut merkit normaalisti ---
+    } else {
+      tokens <- c(tokens, ch)
+      i <- i + 1
+    }
+  }
+  chars <- tokens
   
   # Init the rule list. 
   path_n <- sum(chars == "p")
@@ -562,6 +623,9 @@ parse_path_rules <- function(args, formula) {
   group = 1
   
   while(TRUE){
+    # If all sums are handled, there is no brackets in chars.
+    if(!any(chars == "]")) break
+    
     # Pick the subformula to handle (the deepest pattern between "[" and "]").
     closing_brac <- min(which(chars == "]"))
     opening_brac <- max(which(chars[1:closing_brac] == "["))
@@ -603,31 +667,25 @@ parse_path_rules <- function(args, formula) {
     left  <- if (first_char > 1) chars[1:(first_char - 1)] else character(0)
     right <- if (closing_brac < length(chars)) chars[(closing_brac + 1):length(chars)] else character(0)
     chars <- c(left, combined_path, right)
-    
-    # If all necessary rules are added to the rule list, there is no brackets on 
-    # in chars.
-    has_brackets <- any(chars == "]")
-    if (!has_brackets) {
-      # There still can be multiple paths in chars and if there is, we add product rule one more time. 
-      chars_path_indexes_n <- length(chars[grepl("^[0-9]+$", chars)])
-      chars_p <- which(chars == "p")
-      if(length(chars_p) > 1) {
-        starts <- chars_p
-        ends <- c(chars_p[-1] - 1, length(chars))
-        for (i in seq_along(starts)) {
-          one_path <- chars[starts[i]:ends[i]]
-          path_indexes <- as.integer(one_path[grepl("^[0-9]+$", one_path)])
-          count <- chars_path_indexes_n - length(path_indexes)
-          rules[path_indexes] <- lapply(rules[path_indexes],
-                                        function(x) rbind(x, c(6L, 0L, group, count)))
-        }
-      } 
-      # Add c(0L, 0L, 0L, 0L) to bottom of each path to denote that all necessary rules are
-      # used in validation.
-      rules <- lapply(rules, function(x) rbind(x, c(0L, 0L, 0L, 0L)))
-      break 
-    }
   }
+  
+  # There still can be multiple paths in chars and if there is, we add product rule one more time. 
+  chars_path_indexes_n <- length(chars[grepl("^[0-9]+$", chars)])
+  chars_p <- which(chars == "p")
+  if(length(chars_p) > 1) {
+    starts <- chars_p
+    ends <- c(chars_p[-1] - 1, length(chars))
+    for (i in seq_along(starts)) {
+      one_path <- chars[starts[i]:ends[i]]
+      path_indexes <- as.integer(one_path[grepl("^[0-9]+$", one_path)])
+      count <- chars_path_indexes_n - length(path_indexes)
+      rules[path_indexes] <- lapply(rules[path_indexes],
+                                    function(x) rbind(x, c(6L, 0L, group, count)))
+    }
+  } 
+  # Add c(0L, 0L, 0L, 0L) to bottom of each path to denote that all necessary rules are
+  # used in validation.
+  rules <- lapply(rules, function(x) rbind(x, c(0L, 0L, 0L, 0L)))
   args$path_rules <- rules
   args
 }

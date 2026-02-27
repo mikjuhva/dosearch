@@ -408,9 +408,9 @@
 #' }
 #' }
 #'
-dosearch <- function(data, query, graph, transportability = NULL,
+dosearch <- function(data, query, graph, cand_formula, transportability = NULL,
                      selection_bias = NULL, missing_data = NULL,
-                     control = list()) {
+                     control = list(), formula) {
   if (!is.list(control)) {
     stop_("Argument `control` must be a list.")
   }
@@ -436,6 +436,7 @@ dosearch <- function(data, query, graph, transportability = NULL,
       data,
       query,
       graph,
+      cand_formula,
       transportability,
       selection_bias,
       missing_data,
@@ -813,13 +814,20 @@ get_benchmark <- function(x, run_again = FALSE, include_rules = FALSE) {
 }
 
 #' Validates does the given formula identify causal effect
-validate_formula <- function(formula, query, graph) {
-  data <- parse_distributions(formula)
-  ident_formula <- dosearch(data, query, graph, control = list(validate_run = TRUE, verbose = TRUE, draw_derivation = TRUE, draw_all = TRUE))
+validate_formula <- function(cand_formula, query, graph) {
+  cand_formula <- gsub("P\\(", "p(", cand_formula)
+  data <- parse_distributions(cand_formula)
+  ident_formula <- dosearch(data, query, graph, cand_formula, control = list(validate_run = TRUE, verbose = TRUE, draw_derivation = TRUE, draw_all = TRUE))
   validate <- FALSE
-  if (ident_formula$formula == formula) validate = TRUE
-  print(formula)
-  print(ident_formula$formula)
   plot(ident_formula)
+  print(cand_formula)
+  print(ident_formula$formula)
+  ident_formula$formula <- reorder_formula_like(cand_formula, ident_formula$formula)
+  print(ident_formula$formula)
+  print(cand_formula)
+  if (ident_formula$formula == cand_formula) validate = TRUE
+  
+ 
   return(validate)
 }
+

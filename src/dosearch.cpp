@@ -179,7 +179,7 @@ void dosearch::add_distribution(distr& nquery) {
 }
 
 path dosearch::derive_new_path(const path& pat1, const path& pat2,  const int& ruleid, const int& z) {
-  Rcpp::Rcout << "PATH DERIVATION" << std::endl;
+  //Rcpp::Rcout << "PATH DERIVATION" << std::endl;
   path new_path = pat1;
   int rule_abs = std::abs(ruleid);
   switch (rule_abs) {
@@ -187,6 +187,25 @@ path dosearch::derive_new_path(const path& pat1, const path& pat2,  const int& r
     if (rule_abs == pat1.required_rules[0].number && z == pat1.required_rules[0].subset) {
       new_path.required_rules.erase(new_path.required_rules.begin());
       Rcpp::Rcout << "PATH RULE UPDATE BY RULE " << rule_abs << std::endl;
+      Rcpp::Rcout << "OLD PATH" << std::endl;
+      for (size_t i = 0; i < pat1.required_rules.size(); ++i) {
+        Rcpp::Rcout << "  [" << i << "] "
+                    << "number = " << pat1.required_rules[i].number
+                    << ", subset = " << pat1.required_rules[i].subset
+                    << ", group = " << pat1.required_rules[i].group
+                    << ", count = " << pat1.required_rules[i].count
+                    << "\n";
+      }
+      Rcpp::Rcout << "NEW PATH" << std::endl;
+
+      for (size_t j = 0; j < new_path.required_rules.size(); ++j) {
+        Rcpp::Rcout << "  [" << j << "] "
+                    << "number = " << new_path.required_rules[j].number
+                    << ", subset = " << new_path.required_rules[j].subset
+                    << ", group = " << new_path.required_rules[j].group
+                    << ", count = " << new_path.required_rules[j].count
+                    << "\n";
+      }
     }
     break;
     
@@ -196,34 +215,36 @@ path dosearch::derive_new_path(const path& pat1, const path& pat2,  const int& r
     
   case 6:
     if (rule_abs == pat1.required_rules[0].number)  {
-      int pat1_length = pat1.id.size();
-      if (pat1_length - pat2.required_rules[0].count == 0) {
+      int pat2_length = pat2.id.size();
+      if (new_path.required_rules[0].count - pat2_length == 0) {
         new_path.required_rules.erase(new_path.required_rules.begin());
+        new_path.id.insert(new_path.id.end(), pat2.id.begin(), pat2.id.end());
       } else{
-        new_path.required_rules[0].count = pat1_length - pat2.required_rules[0].count;
+        new_path.required_rules[0].count = new_path.required_rules[0].count - pat2_length;
+        new_path.id.insert(new_path.id.end(), pat2.id.begin(), pat2.id.end());
       }
       Rcpp::Rcout << "PATH RULE UPDATE BY RULE " << rule_abs << std::endl;
+      Rcpp::Rcout << "OLD PATH" << std::endl;
+      for (size_t i = 0; i < pat1.required_rules.size(); ++i) {
+        Rcpp::Rcout << "  [" << i << "] "
+                    << "number = " << pat1.required_rules[i].number
+                    << ", subset = " << pat1.required_rules[i].subset
+                    << ", group = " << pat1.required_rules[i].group
+                    << ", count = " << pat1.required_rules[i].count
+                    << "\n";
+      }
+      Rcpp::Rcout << "NEW PATH" << std::endl;
+
+      for (size_t j = 0; j < new_path.required_rules.size(); ++j) {
+        Rcpp::Rcout << "  [" << j << "] "
+                    << "number = " << new_path.required_rules[j].number
+                    << ", subset = " << new_path.required_rules[j].subset
+                    << ", group = " << new_path.required_rules[j].group
+                    << ", count = " << new_path.required_rules[j].count
+                    << "\n";
+      }
     }
     break;
-  }
-  Rcpp::Rcout << "OLD PATH" << std::endl;
-  for (size_t i = 0; i < pat1.required_rules.size(); ++i) {
-    Rcpp::Rcout << "  [" << i << "] "
-                << "number = " << pat1.required_rules[i].number
-                << ", subset = " << pat1.required_rules[i].subset
-                << ", group = " << pat1.required_rules[i].group
-                << ", count = " << pat1.required_rules[i].count
-                << "\n";
-  }
-  Rcpp::Rcout << "NEW PATH" << std::endl;
-
-  for (size_t j = 0; j < new_path.required_rules.size(); ++j) {
-    Rcpp::Rcout << "  [" << j << "] "
-                << "number = " << new_path.required_rules[j].number
-                << ", subset = " << new_path.required_rules[j].subset
-                << ", group = " << new_path.required_rules[j].group
-                << ", count = " << new_path.required_rules[j].count
-                << "\n";
   }
   return new_path;
 }
