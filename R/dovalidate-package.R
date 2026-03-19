@@ -8,10 +8,10 @@
 #' # See also
 #'
 #' * The package vignette.
-#' * [dosearch::dosearch()] for instructions and various examples.
-#' * <https://github.com/santikka/dosearch/issues/> to submit a bug report.
+#' * [dovalidate::dovalidate()] for instructions and various examples.
+#' * <https://github.com/santikka/dovalidate/issues/> to submit a bug report.
 #'
-#' @useDynLib dosearch, .registration = TRUE
+#' @useDynLib dovalidate, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 #' @author Santtu Tikka, Antti Hyttinen, Juha Karvanen
 #' @references S. Tikka, A. Hyttinen and J. Karvanen.

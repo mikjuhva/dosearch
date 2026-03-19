@@ -64,7 +64,7 @@
 #' }
 #' Some alternative formats for DAGs are supported as well. Graphs created
 #' using the \pkg{igraph} package in the \pkg{causal.effect} package syntax can
-#' be used for \pkg{dosearch} as well. DAGs created using the \pkg{dagitty}
+#' be used for \pkg{dovalidate} as well. DAGs created using the \pkg{dagitty}
 #' package are also supported. Note that both time and space complexity of the
 #' underlying search algorithm are exponential in the number of vertices,
 #' but instances with up to ten nodes are routinely solved in under a second.
@@ -107,8 +107,8 @@
 #' is issued if a proxy variable is present in an input distribution but its
 #' corresponding mechanism is not present in any input. See e.g.,
 #' (Mohan, Pearl and Tian, 2013) for details on missing data as
-#' a causal inference problem. Note that `dosearch` is not complete for
-#' missing data problems, meaning that if `dosearch` is not able to identify
+#' a causal inference problem. Note that `dovalidate` is not complete for
+#' missing data problems, meaning that if `dovalidate` is not able to identify
 #' the `query`, it might still be identifiable via some other means.
 #'
 #' The `control` argument is a list that can supply any of the following
@@ -128,7 +128,7 @@
 #'   the derivation will contain every step taken by the search. If `FALSE`,
 #'   only the steps that resulted in an identifiable target are returned.
 #'   Defaults to `FALSE`.
-#'   `empty`: a `logical` value. If `TRUE`, an empty `dosearch` object is
+#'   `empty`: a `logical` value. If `TRUE`, an empty `dovalidate` object is
 #'   returned without running the search.
 #' * `formula`: a `logical` value. If `TRUE`, a string representing the
 #'   identifiable query is returned when the target query is identifiable.
@@ -165,7 +165,7 @@
 #' @param missing_data A `character` string describing the missing data
 #'   mechanisms of the model in the package syntax (for DAGs only).
 #' @param control A `list` of control parameters.
-#' @return `dosearch` returns an object of class `dosearch` which is a list
+#' @return `dovalidate` returns an object of class `dovalidate` which is a list
 #'   with the following components by default. See the `control` options
 #'   on how to obtain a graphical representation of the derivation or
 #'   how to benchmark the search.
@@ -203,7 +203,7 @@
 #'   z -> x
 #'   z -> y
 #' "
-#' dosearch(data1, query1, graph1)
+#' dovalidate(data1, query1, graph1)
 #'
 #' # A simple front-door formula
 #' data2 <- "P(x,y,z)"
@@ -213,7 +213,7 @@
 #'   z -> y
 #'   x <-> y
 #' "
-#' dosearch(data2, query2, graph2)
+#' dovalidate(data2, query2, graph2)
 #'
 #' # A scenario with combined transportability and selection bias
 #' # in this case using the search heuristic provides a simpler formula
@@ -229,7 +229,7 @@
 #'   t -> z
 #'   x <-> y
 #' "
-#' dosearch(
+#' dovalidate(
 #'   data,
 #'   query,
 #'   graph,
@@ -249,7 +249,7 @@
 #'   r_y -> r_x
 #' "
 #' md <- "r_x : x, r_y : y"
-#' dosearch(data, query, graph, missing_data = md)
+#' dovalidate(data, query, graph, missing_data = md)
 #'
 #' # Graph input using 'igraph' in the 'causaleffect' syntax
 #' if (requireNamespace("igraph", quietly = TRUE)) {
@@ -258,13 +258,13 @@
 #'     simplify = FALSE
 #'   )
 #'   g_igraph <- igraph::set.edge.attribute(g_igraph, "description", 3:4, "U")
-#'   dosearch(data2, query2, g_igraph)
+#'   dovalidate(data2, query2, g_igraph)
 #' }
 #'
 #' # Graph input with 'dagitty'
 #' if (requireNamespace("dagitty", quietly = TRUE)) {
 #'   g_dagitty <- dagitty::dagitty("dag{x -> z -> y; x <-> y}")
-#'   dosearch(data2, query2, g_dagitty)
+#'   dovalidate(data2, query2, g_dagitty)
 #' }
 #'
 #' # Alternative distribution input style using lists and vectors:
@@ -279,7 +279,7 @@
 #'   c(x = 0, y = 0, z = 0) # = P(x,y,z)
 #' )
 #' query_alt <- c(x = 1, y = 0) # = P(y|do(x))
-#' dosearch(data_alt, query_alt, graph2)
+#' dovalidate(data_alt, query_alt, graph2)
 #'
 #' \dontrun{
 #' # Additional examples
@@ -304,7 +304,7 @@
 #'   z_1 -> w
 #'   z_2 -> w
 #' "
-#' dosearch(data3, query3, graph3)
+#' dovalidate(data3, query3, graph3)
 #'
 #' # Selection bias
 #' data4 <- "
@@ -319,7 +319,7 @@
 #'   y   -- z_2
 #'   z_2 -> s
 #' "
-#' dosearch(data4, query4, graph4, selection_bias = "s")
+#' dovalidate(data4, query4, graph4, selection_bias = "s")
 #'
 #' # Transportability
 #' data5 <- "
@@ -339,7 +339,7 @@
 #'   t_2 -> z_2
 #'   t_3 -> y
 #' "
-#' dosearch(data5, query5, graph5, transportability = "t_1, t_2, t_3")
+#' dovalidate(data5, query5, graph5, transportability = "t_1, t_2, t_3")
 #'
 #' # Missing data
 #' # Proxy variables are denoted by an asterisk (*)
@@ -355,7 +355,7 @@
 #'   y -> m_x
 #'   z <-> y
 #' "
-#' dosearch(data6, query6, graph6, missing_data = "m_x : x, m_y : y, m_z : z")
+#' dovalidate(data6, query6, graph6, missing_data = "m_x : x, m_y : y, m_z : z")
 #'
 #' # An LDAG
 #' data7 <- "P(X,Y,Z)"
@@ -370,7 +370,7 @@
 #'   Q -> Z
 #'   Q -> Y : Z = 0
 #' "
-#' dosearch(data7, query7, graph7)
+#' dovalidate(data7, query7, graph7)
 #'
 #' # A more complicated LDAG
 #' # with multiple assignments for the edge X -> Z
@@ -391,7 +391,7 @@
 #'   U -> X : I_X = 1
 #'   U -> Y : A = 1
 #' "
-#' dosearch(data8, query8, graph8)
+#' dovalidate(data8, query8, graph8)
 #'
 #' # Export the DOT diagram of the derivation as an SVG file
 #' # to the working directory via the DOT package.
@@ -408,7 +408,7 @@
 #' }
 #' }
 #'
-dosearch <- function(data, query, graph, cand_formula, transportability = NULL,
+dovalidate <- function(data, query, graph, cand_formula, transportability = NULL,
                      selection_bias = NULL, missing_data = NULL,
                      control = list(), formula) {
   if (!is.list(control)) {
@@ -445,13 +445,13 @@ dosearch <- function(data, query, graph, cand_formula, transportability = NULL,
   }
 }
 
-#' Summary of a `dosearch` Object
+#' Summary of a `dovalidate` Object
 #'
 #' @export
-#' @rdname dosearch
-#' @param object An object of class `dosearch`.
+#' @rdname dovalidate
+#' @param object An object of class `dovalidate`.
 #' @param ... Not used.
-#' @return `summary` returns a `summary.dosearch` object.
+#' @return `summary` returns a `summary.dovalidate` object.
 #' @examples
 #' data <- "p(x,y,z)"
 #' query <- "p(y|do(x))"
@@ -460,12 +460,12 @@ dosearch <- function(data, query, graph, cand_formula, transportability = NULL,
 #'   Z -> x
 #'   z -> y
 #' "
-#' x <- dosearch(data, query, graph)
+#' x <- dovalidate(data, query, graph)
 #' y <- summary(x)
 #'
-summary.dosearch <- function(object, ...) {
-  if (!is_dosearch(object)) {
-    stop_("Argument `object` must be an object of class `dosearch`.")
+summary.dovalidate <- function(object, ...) {
+  if (!is_dovalidate(object)) {
+    stop_("Argument `object` must be an object of class `dovalidate`.")
   }
   took <- NA
   units <- NA
@@ -498,20 +498,20 @@ summary.dosearch <- function(object, ...) {
       data = d,
       graph = g
     ),
-    class = "summary.dosearch"
+    class = "summary.dovalidate"
   )
 }
 
-#' Plot of a `dosearch` Derivation
+#' Plot of a `dovalidate` Derivation
 #'
 #' @export
-#' @rdname dosearch
-#' @param x An object of class `dosearch`.
+#' @rdname dovalidate
+#' @param x An object of class `dovalidate`.
 #' @param ... Additional arguments passed to [DiagrammeR::grViz()].
 #' @return `plot` returns a `htmlwidget` object or `NULL` (invisibly)
 #' @examples
 #' \dontrun{
-#' out <- dosearch(
+#' out <- dovalidate(
 #'   "p(x,y,z, w)",
 #'   "p(y|do(x))",
 #'   "x -> y \n z -> x \n w -> z \n x <-> w \n w <-> y",
@@ -522,7 +522,7 @@ summary.dosearch <- function(object, ...) {
 #' }
 #' }
 #'
-plot.dosearch <- function(x, ...) {
+plot.dovalidate <- function(x, ...) {
   out <- NULL
   if (is.null(x$derivation)) {
     message("No derivation is available to plot.")
@@ -534,10 +534,10 @@ plot.dosearch <- function(x, ...) {
   invisible(out)
 }
 
-#' Print the Summary of a `dosearch` Object
+#' Print the Summary of a `dovalidate` Object
 #'
 #' @export
-#' @param x An object of class `summary.dosearch`.
+#' @param x An object of class `summary.dovalidate`.
 #' @param max_chars Maximum number of characters of the formula to display. The
 #'   default is 300.
 #' @param ... Not used.
@@ -550,13 +550,13 @@ plot.dosearch <- function(x, ...) {
 #'   Z -> x
 #'   z -> y
 #' "
-#' x <- dosearch(data, query, graph)
+#' x <- dovalidate(data, query, graph)
 #' y <- summary(x)
 #' print(y)
 #'
-print.summary.dosearch <- function(x, max_chars = 300L, ...) {
-  if (!inherits(x, "summary.dosearch")) {
-    stop_("Argument `x` must be an object of class `summary.dosearch`.")
+print.summary.dovalidate <- function(x, max_chars = 300L, ...) {
+  if (!inherits(x, "summary.dovalidate")) {
+    stop_("Argument `x` must be an object of class `summary.dovalidate`.")
   }
   res <- x$result
   y <- x$call
@@ -591,11 +591,11 @@ print.summary.dosearch <- function(x, max_chars = 300L, ...) {
   invisible(x)
 }
 
-#' Print a `dosearch` Object
+#' Print a `dovalidate` Object
 #'
 #' @export
-#' @rdname dosearch
-#' @param x An object of class `dosearch`.
+#' @rdname dovalidate
+#' @param x An object of class `dovalidate`.
 #' @param max_chars Maximum number of characters of the formula to display. The
 #'   default is 300.
 #' @param ... Additional arguments passed to [base::format()].
@@ -609,12 +609,12 @@ print.summary.dosearch <- function(x, max_chars = 300L, ...) {
 #'   Z -> y
 #'   x <-> y
 #' "
-#' x <- dosearch(data, query, graph)
+#' x <- dovalidate(data, query, graph)
 #' print(x)
 #'
-print.dosearch <- function(x, max_chars = 300L, ...) {
-  if (!is_dosearch(x)) {
-    stop_("Argument `x` must be an object of class `dosearch`.")
+print.dovalidate <- function(x, max_chars = 300L, ...) {
+  if (!is_dovalidate(x)) {
+    stop_("Argument `x` must be an object of class `dovalidate`.")
   }
   if (is.null(x$formula) || identical(x$formula, "")) {
     cat(
@@ -636,11 +636,11 @@ print.dosearch <- function(x, max_chars = 300L, ...) {
 #' Was the Target Distribution Identifiable?
 #'
 #' `is_identifiable` returns the a logical value describing the identifiability
-#' of a causal query of an object of class `dosearch`.
+#' of a causal query of an object of class `dovalidate`.
 #'
 #' @export
-#' @rdname dosearch
-#' @param x An object of class `dosearch`.
+#' @rdname dovalidate
+#' @param x An object of class `dovalidate`.
 #' @return `is_identifiable` returns a logical value. If `TRUE`, the target
 #'   distribution was identifiable from the available inputs.
 #' @examples
@@ -651,13 +651,13 @@ print.dosearch <- function(x, max_chars = 300L, ...) {
 #'   z -> x
 #'   z -> y
 #' "
-#' x <- dosearch(data, query, graph)
+#' x <- dovalidate(data, query, graph)
 #' is_identifiable(x)
 #' # TRUE
 #'
 is_identifiable <- function(x) {
-  if (!is_dosearch(x)) {
-    stop_("Argument `x` must be an object of class `dosearch`.")
+  if (!is_dovalidate(x)) {
+    stop_("Argument `x` must be an object of class `dovalidate`.")
   }
   x$identifiable
 }
@@ -665,14 +665,14 @@ is_identifiable <- function(x) {
 #' Retrieve the Identifying Formula of a Causal Query
 #'
 #' `get_formula` returns the identifying formula describing a causal query of
-#' an object of class `dosearch`. If no formula is available, returns `NULL`.
+#' an object of class `dovalidate`. If no formula is available, returns `NULL`.
 #'
 #' @export
-#' @rdname dosearch
-#' @param x An object of class `dosearch`.
+#' @rdname dovalidate
+#' @param x An object of class `dovalidate`.
 #' @param run_again If `TRUE`, runs the search again in an attempt to obtain
 #'   the formula, for example if `control$formula` was `FALSE` in the call to
-#'   [dosearch::dosearch()], but the query itself is identifiable.
+#'   [dovalidate::dovalidate()], but the query itself is identifiable.
 #' @return `get_formula` returns a `character` string representing the query
 #'   in terms of the input data or `NULL` if the query is not identifiable.
 #' @examples
@@ -683,17 +683,17 @@ is_identifiable <- function(x) {
 #'   z -> x
 #'   z -> y
 #' "
-#' x <- dosearch(data, query, graph, control = list(formula = FALSE))
+#' x <- dovalidate(data, query, graph, control = list(formula = FALSE))
 #' get_formula(x, run_again = TRUE)
 #'
 get_formula <- function(x, run_again = FALSE) {
-  if (!is_dosearch(x)) {
-    stop_("Argument `x` must be an object of class `dosearch`.")
+  if (!is_dovalidate(x)) {
+    stop_("Argument `x` must be an object of class `dovalidate`.")
   }
   if (run_again) {
     y <- x$call
     y$control$formula <- TRUE
-    z <- dosearch(
+    z <- dovalidate(
       y$data,
       y$query,
       y$graph,
@@ -713,9 +713,9 @@ get_formula <- function(x, run_again = FALSE) {
 #' Retrieve the Derivation of a Causal Query
 #'
 #' `get_derivation` returns the derivation of a causal query of an object of
-#' class `dosearch`. If no derivation is available, returns `NULL`.
+#' class `dovalidate`. If no derivation is available, returns `NULL`.
 #'
-#' @rdname dosearch
+#' @rdname dovalidate
 #' @param draw_all A logical value. If `TRUE`, the derivation will contain
 #'   every step taken by the search. If `FALSE`, only steps that resulted in
 #'   identification are returned.
@@ -731,17 +731,17 @@ get_formula <- function(x, run_again = FALSE) {
 #'   z -> x
 #'   z -> y
 #' "
-#' x <- dosearch(data, query, graph, control = list(draw_derivation = FALSE))
+#' x <- dovalidate(data, query, graph, control = list(draw_derivation = FALSE))
 #' get_derivation(x, run_again = TRUE)
 get_derivation <- function(x, run_again = FALSE, draw_all = FALSE) {
-  if (!is_dosearch(x)) {
-    stop_("Argument `x` must be an object of class `dosearch`.")
+  if (!is_dovalidate(x)) {
+    stop_("Argument `x` must be an object of class `dovalidate`.")
   }
   if (run_again) {
     y <- x$call
     y$control$draw_derivation <- TRUE
     y$control$draw_all <- draw_all
-    z <- dosearch(
+    z <- dovalidate(
       y$data,
       y$query,
       y$graph,
@@ -761,10 +761,10 @@ get_derivation <- function(x, run_again = FALSE, draw_all = FALSE) {
 #' Benchmark a Specific Run of the Search
 #'
 #' `get_benchmark` returns the benchmarking information of an object of
-#' class `dosearch`. If no benchmark is available, returns `NULL`.
+#' class `dovalidate`. If no benchmark is available, returns `NULL`.
 #'
 #' @export
-#' @rdname dosearch
+#' @rdname dovalidate
 #' @param include_rules A `logical` value. If `TRUE`, also benchmarks the time
 #'   taken by each inference rule separately.
 #' @return `get_benchmark` returns a `list` with one or two elements or `NULL`.
@@ -781,18 +781,18 @@ get_derivation <- function(x, run_again = FALSE, draw_all = FALSE) {
 #'   z -> x
 #'   z -> y
 #' "
-#' x <- dosearch(data, query, graph, control = list(benchmark = FALSE))
+#' x <- dovalidate(data, query, graph, control = list(benchmark = FALSE))
 #' get_benchmark(x, run_again = TRUE)
 #'
 get_benchmark <- function(x, run_again = FALSE, include_rules = FALSE) {
-  if (!is_dosearch(x)) {
-    stop_("Argument `x` must be an object of class `dosearch`.")
+  if (!is_dovalidate(x)) {
+    stop_("Argument `x` must be an object of class `dovalidate`.")
   }
   if (run_again) {
     y <- x$call
     y$control$benchmark <- TRUE
     y$control$benchmark_rules <- include_rules
-    z <- dosearch(
+    z <- dovalidate(
       y$data,
       y$query,
       y$graph,
@@ -817,12 +817,23 @@ get_benchmark <- function(x, run_again = FALSE, include_rules = FALSE) {
 validate_formula <- function(cand_formula, query, graph) {
   cand_formula <- gsub("P\\(", "p(", cand_formula)
   data <- parse_distributions(cand_formula)
-  ident_formula <- dosearch(data, query, graph, cand_formula, control = list(validate_run = TRUE, verbose = TRUE, draw_derivation = TRUE, draw_all = TRUE))
+  ident_formula <- dovalidate(data, query, graph, cand_formula, control = list(validate_run = TRUE, verbose = TRUE, draw_derivation = TRUE, draw_all = FALSE))
   validate <- FALSE
-  plot(ident_formula)
+  #plot(ident_formula)
   print(cand_formula)
   print(ident_formula$formula)
-  ident_formula$formula <- reorder_formula_like(cand_formula, ident_formula$formula)
+  tryCatch(
+    {
+      ident_formula$formula <- reorder_formula_like(cand_formula, ident_formula$formula)
+    },
+    error = function(e) {
+      print(e)
+    },
+    warning = function(w) {
+      print(e)
+    }
+  )
+  plot(ident_formula)
   print(ident_formula$formula)
   print(cand_formula)
   if (ident_formula$formula == cand_formula) validate = TRUE

@@ -1,21 +1,21 @@
-#include "dosearch.h"
+#include "dovalidate.h"
 
-dosearch::dosearch(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):search(n_, tl, bm, br, dd, da, fa, im, verb, valid) {
+dovalidate::dovalidate(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):search(n_, tl, bm, br, dd, da, fa, im, verb, valid) {
 }
 
-dosearch::~dosearch() {
+dovalidate::~dovalidate() {
 }
 
-void dosearch::set_target(const int& a, const int& b, const int& c, const int& d) {
+void dovalidate::set_target(const int& a, const int& b, const int& c, const int& d) {
   target.a = a; target.b = b; target.c = c; target.d = d;
   if (verbose) Rcpp::Rcout << "Setting target: " << to_string(target) << std::endl;
 }
 
-void dosearch::set_graph(dcongraph* g_) {
+void dovalidate::set_graph(dcongraph* g_) {
   g = g_;
 }
 
-void dosearch::set_options(const std::vector<int>& rule_vec) {
+void dovalidate::set_options(const std::vector<int>& rule_vec) {
   trivial_id = false;
   index = 0;
   lhs = 0;
@@ -56,7 +56,7 @@ void dosearch::set_options(const std::vector<int>& rule_vec) {
   rule_names[10] = "EX";
 }
 
-void dosearch::set_labels(const Rcpp::StringVector& lab) {
+void dovalidate::set_labels(const Rcpp::StringVector& lab) {
   labels = std::vector<std::string>(2*n);
   for (int i = 0; i < n; i++) {
     labels[i] = lab(i);
@@ -64,11 +64,11 @@ void dosearch::set_labels(const Rcpp::StringVector& lab) {
   }
 }
 
-void dosearch::set_md_symbol(const char& mds) {
+void dovalidate::set_md_symbol(const char& mds) {
   md_sym = mds;
 }
 
-void dosearch::add_known(const int& a, const int& b, const int& c, const int& d, const Rcpp::IntegerMatrix& mat) {
+void dovalidate::add_known(const int& a, const int& b, const int& c, const int& d, const Rcpp::IntegerMatrix& mat) {
   index++;
   p pp;
   distr iquery;
@@ -123,25 +123,21 @@ void dosearch::add_known(const int& a, const int& b, const int& c, const int& d,
   if (verbose) Rcpp::Rcout << "Adding known distribution: " << to_string(pp) << std::endl;
 }
 
-bool dosearch::check_trivial() {
+bool dovalidate::check_trivial() {
   if ((lhs & target.a) == target.a) return false;
   return true;
 }
 
-void dosearch::assign_candidate(distr& required) {
+void dovalidate::assign_candidate(distr& required) {
   info.to.d = required.pp.d & (info.to.a | info.to.b | info.to.c);
 }
 
-distr& dosearch::next_distribution(const int& i) {
+distr& dovalidate::next_distribution(const int& i) {
   return L[i];
 }
 
-void dosearch::derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found, const int& z) {
-  index++;
+void dovalidate::derive_distribution(const distr& iquery, const distr& required, const int& ruleid, int& remaining, bool& found, const int& z) {
   distr nquery;
-  nquery.index = index;
-  nquery.pp = info.to;
-  
   if (validate_run) {
     nquery.pat = derive_new_path(iquery.pat, required.pat, ruleid, z);
     nquery.primitive = false;
@@ -149,36 +145,43 @@ void dosearch::derive_distribution(const distr& iquery, const distr& required, c
     nquery.primitive = is_primitive(iquery.primitive, required.primitive, ruleid);
   }
   
-  nquery.pa1 = iquery.index;
-  nquery.pa2 = 0;
-  nquery.rule_num = ruleid;
-  if (info.rp.a > 0) nquery.pa2 = required.index;
-  
-  if (equal_p(info.to, target) & (nquery.pat.required_rules[0].number == 0)) {
-    if (verbose) {
-      if (info.rp.a > 0) Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " and " << to_string(info.rp) << " using rule: " << std::to_string(ruleid) << std::endl;
-      else Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " using rule: " << std::to_string(ruleid) << std::endl;
-      Rcpp::Rcout << "Target found" << std::endl;
-      Rcpp::Rcout << "Index = " << index << std::endl;
-    }
-    target_dist.push_back(nquery);
-    found = true;
-  } else {
-    if (verbose) {
-      if (info.rp.a > 0) Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " and " << to_string(info.rp) << " using rule: " << std::to_string(ruleid) << std::endl;
-      else Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " using rule: " << std::to_string(ruleid) << std::endl;
-    }
-    remaining++;
-    add_distribution(nquery);
+  if (!(equal_p(info.to, target) & (nquery.pat.required_rules[0].number != 0))) {
+    index++;
+    nquery.index = index;
+    nquery.pp = info.to;
+    nquery.pa1 = iquery.index;
+    nquery.pa2 = 0;
+    nquery.rule_num = ruleid;
+    if (info.rp.a > 0) nquery.pa2 = required.index;
+    
+    if (equal_p(info.to, target) & (nquery.pat.required_rules[0].number == 0)) {
+      if (verbose) {
+        if (info.rp.a > 0) Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " and " << to_string(info.rp) << " using rule: " << std::to_string(ruleid) << std::endl;
+        else Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " using rule: " << std::to_string(ruleid) << std::endl;
+        Rcpp::Rcout << "Target found" << std::endl;
+        Rcpp::Rcout << "Index = " << index << std::endl;
+      }
+      target_dist.push_back(nquery);
+      found = true;
+    } else {
+      
+      if (verbose) {
+        if (info.rp.a > 0) Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " and " << to_string(info.rp) << " using rule: " << std::to_string(ruleid) << std::endl;
+        else Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " using rule: " << std::to_string(ruleid) << std::endl;
+      }
+      remaining++;
+      add_distribution(nquery);
+    }  
   }
+  
 }
 
-void dosearch::add_distribution(distr& nquery) {
+void dovalidate::add_distribution(distr& nquery) {
   L[index] = nquery;
   ps[make_key(nquery.pp)] = index;
 }
 
-path dosearch::derive_new_path(const path& pat1, const path& pat2,  const int& ruleid, const int& z) {
+path dovalidate::derive_new_path(const path& pat1, const path& pat2,  const int& ruleid, const int& z) {
   //Rcpp::Rcout << "PATH DERIVATION" << std::endl;
   path new_path = pat1;
   int rule_abs = std::abs(ruleid);
@@ -186,26 +189,26 @@ path dosearch::derive_new_path(const path& pat1, const path& pat2,  const int& r
   case 4:
     if (rule_abs == pat1.required_rules[0].number && z == pat1.required_rules[0].subset) {
       new_path.required_rules.erase(new_path.required_rules.begin());
-      Rcpp::Rcout << "PATH RULE UPDATE BY RULE " << rule_abs << std::endl;
-      Rcpp::Rcout << "OLD PATH" << std::endl;
-      for (size_t i = 0; i < pat1.required_rules.size(); ++i) {
-        Rcpp::Rcout << "  [" << i << "] "
-                    << "number = " << pat1.required_rules[i].number
-                    << ", subset = " << pat1.required_rules[i].subset
-                    << ", group = " << pat1.required_rules[i].group
-                    << ", count = " << pat1.required_rules[i].count
-                    << "\n";
-      }
-      Rcpp::Rcout << "NEW PATH" << std::endl;
+      // Rcpp::Rcout << "PATH RULE UPDATE BY RULE " << rule_abs << std::endl;
+      // Rcpp::Rcout << "OLD PATH" << std::endl;
+      // // for (size_t i = 0; i < pat1.required_rules.size(); ++i) {
+      //   Rcpp::Rcout << "  [" << i << "] "
+      //               << "number = " << pat1.required_rules[i].number
+      //               << ", subset = " << pat1.required_rules[i].subset
+      //               << ", group = " << pat1.required_rules[i].group
+      //               << ", count = " << pat1.required_rules[i].count
+      //               << "\n";
+      // }
+      // Rcpp::Rcout << "NEW PATH" << std::endl;
 
-      for (size_t j = 0; j < new_path.required_rules.size(); ++j) {
-        Rcpp::Rcout << "  [" << j << "] "
-                    << "number = " << new_path.required_rules[j].number
-                    << ", subset = " << new_path.required_rules[j].subset
-                    << ", group = " << new_path.required_rules[j].group
-                    << ", count = " << new_path.required_rules[j].count
-                    << "\n";
-      }
+      // for (size_t j = 0; j < new_path.required_rules.size(); ++j) {
+      //   Rcpp::Rcout << "  [" << j << "] "
+      //               << "number = " << new_path.required_rules[j].number
+      //               << ", subset = " << new_path.required_rules[j].subset
+      //               << ", group = " << new_path.required_rules[j].group
+      //               << ", count = " << new_path.required_rules[j].count
+      //               << "\n";
+      // }
     }
     break;
     
@@ -223,33 +226,33 @@ path dosearch::derive_new_path(const path& pat1, const path& pat2,  const int& r
         new_path.required_rules[0].count = new_path.required_rules[0].count - pat2_length;
         new_path.id.insert(new_path.id.end(), pat2.id.begin(), pat2.id.end());
       }
-      Rcpp::Rcout << "PATH RULE UPDATE BY RULE " << rule_abs << std::endl;
-      Rcpp::Rcout << "OLD PATH" << std::endl;
-      for (size_t i = 0; i < pat1.required_rules.size(); ++i) {
-        Rcpp::Rcout << "  [" << i << "] "
-                    << "number = " << pat1.required_rules[i].number
-                    << ", subset = " << pat1.required_rules[i].subset
-                    << ", group = " << pat1.required_rules[i].group
-                    << ", count = " << pat1.required_rules[i].count
-                    << "\n";
-      }
-      Rcpp::Rcout << "NEW PATH" << std::endl;
-
-      for (size_t j = 0; j < new_path.required_rules.size(); ++j) {
-        Rcpp::Rcout << "  [" << j << "] "
-                    << "number = " << new_path.required_rules[j].number
-                    << ", subset = " << new_path.required_rules[j].subset
-                    << ", group = " << new_path.required_rules[j].group
-                    << ", count = " << new_path.required_rules[j].count
-                    << "\n";
-      }
+      // Rcpp::Rcout << "PATH RULE UPDATE BY RULE " << rule_abs << std::endl;
+      // Rcpp::Rcout << "OLD PATH" << std::endl;
+      // // for (size_t i = 0; i < pat1.required_rules.size(); ++i) {
+      //   Rcpp::Rcout << "  [" << i << "] "
+      //               << "number = " << pat1.required_rules[i].number
+      //               << ", subset = " << pat1.required_rules[i].subset
+      //               << ", group = " << pat1.required_rules[i].group
+      //               << ", count = " << pat1.required_rules[i].count
+      //               << "\n";
+      // }
+      // Rcpp::Rcout << "NEW PATH" << std::endl;
+      // 
+      // for (size_t j = 0; j < new_path.required_rules.size(); ++j) {
+      //   Rcpp::Rcout << "  [" << j << "] "
+      //               << "number = " << new_path.required_rules[j].number
+      //               << ", subset = " << new_path.required_rules[j].subset
+      //               << ", group = " << new_path.required_rules[j].group
+      //               << ", count = " << new_path.required_rules[j].count
+      //               << "\n";
+      // }
     }
     break;
   }
   return new_path;
 }
 
-void dosearch::enumerate_candidates() {
+void dovalidate::enumerate_candidates() {
   int asw = (info.rp.a - (info.rp.a & info.from.a)) & md_s;
   int exist = ps[make_key(info.rp)];
   if (exist > 0) candidates.push(exist);
@@ -281,15 +284,15 @@ void dosearch::enumerate_candidates() {
   }
 }
 
-bool dosearch::separation_criterion() {
+bool dovalidate::separation_criterion() {
   return g->dsep_set(info.ri.x, info.ri.y, info.ri.u, info.ri.v);
 }
 
-int dosearch::rule_limit(const int& ruleid, const unsigned int& z_size) {
+int dovalidate::rule_limit(const int& ruleid, const unsigned int& z_size) {
   return z_size;
 }
 
-bool dosearch::is_primitive(const bool& pa1_primitive, const bool& pa2_primitive, const int& ruleid) {
+bool dovalidate::is_primitive(const bool& pa1_primitive, const bool& pa2_primitive, const int& ruleid) {
   if (pa1_primitive && pa2_primitive) {
     if (ruleid * ruleid < 16) return false;
     return true;
@@ -297,7 +300,7 @@ bool dosearch::is_primitive(const bool& pa1_primitive, const bool& pa2_primitive
   return false;
 }
 
-std::string dosearch::derive_formula(distr& dist) {
+std::string dovalidate::derive_formula(distr& dist) {
   std::string formula = "";
   if (dist.pa1 > 0) {
     int r = dist.rule_num;
@@ -347,7 +350,7 @@ std::string dosearch::derive_formula(distr& dist) {
   return(formula);
 }
 
-std::string dosearch::dec_to_text(const int& dec, const int& enabled) const {
+std::string dovalidate::dec_to_text(const int& dec, const int& enabled) const {
   if (dec == 0) return("");
   std::string s = "";
   int first = 0;
@@ -371,7 +374,7 @@ std::string dosearch::dec_to_text(const int& dec, const int& enabled) const {
   return s;
 }
 
-std::string dosearch::to_string(const p& pp) const {
+std::string dovalidate::to_string(const p& pp) const {
   int a = pp.a;
   int b = pp.b;
   int c = pp.c;
@@ -389,7 +392,7 @@ std::string dosearch::to_string(const p& pp) const {
   return s;
 }
 
-bool dosearch::valid_rule(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const bool &primi) const {
+bool dovalidate::valid_rule(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const bool &primi) const {
   switch (ruleid) {
     case -1 : {
       // there must be observations to delete
@@ -471,7 +474,7 @@ bool dosearch::valid_rule(const int& ruleid, const int& a, const int& b, const i
 }
 
 // validate_run
-bool dosearch::valid_rule_with_z(const int& ruleid, const int& z, const int& allowed_rule, const int& allowed_z) const {
+bool dovalidate::valid_rule_with_z(const int& ruleid, const int& z, const int& allowed_rule, const int& allowed_z) const {
   // Rcpp::Rcout << "RULE TO TRY " << ruleid << " WITH Z: " << z << " \n";
   // Rcpp::Rcout << "ALLOWED RULE: " << allowed_rule;
   // Rcpp::Rcout << "ALLOWED SUBSET: " << allowed_z  << "\n";
@@ -504,7 +507,7 @@ bool dosearch::valid_rule_with_z(const int& ruleid, const int& z, const int& all
   return false;
 }
 
-void dosearch::apply_rule(const int &ruleid, const int &a, const int &b, const int &c, const int &d, const int &z) {
+void dovalidate::apply_rule(const int &ruleid, const int &a, const int &b, const int &c, const int &d, const int &z) {
   int u, v, j, k;
   info.valid = false;
   switch (ruleid) {
@@ -677,7 +680,7 @@ void dosearch::apply_rule(const int &ruleid, const int &a, const int &b, const i
   get_ruleinfo(ruleid, a, b, c, d, z);
 }
 
-void dosearch::get_ruleinfo(const int& ruleid, const int& y, const int& xw, const int& x, const int& d, const int& z) {
+void dovalidate::get_ruleinfo(const int& ruleid, const int& y, const int& xw, const int& x, const int& d, const int& z) {
   info.from.a = y; info.from.b = xw; info.from.c = x; info.from.d = d;
   switch (ruleid) {
     // Insertion of observations
@@ -821,21 +824,21 @@ void dosearch::get_ruleinfo(const int& ruleid, const int& y, const int& xw, cons
   }
 }
 
-// dosearch_heuristic
+// dovalidate_heuristic
 
-// dosearch_heuristic::dosearch_heuristic(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):dosearch(n_, tl, bm, br, dd, da, fa, im, verb, valid) {
+// dovalidate_heuristic::dovalidate_heuristic(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid):dovalidate(n_, tl, bm, br, dd, da, fa, im, verb, valid) {
 // }
 // 
-// dosearch_heuristic::~dosearch_heuristic() {
+// dovalidate_heuristic::~dovalidate_heuristic() {
 // }
 // 
-// distr& dosearch_heuristic::next_distribution(const int& i) {
+// distr& dovalidate_heuristic::next_distribution(const int& i) {
 //     distr& top = *Q.top();
 //     Q.pop();
 //     return top;
 // }
 // 
-// void dosearch_heuristic::add_distribution(distr& nquery) {
+// void dovalidate_heuristic::add_distribution(distr& nquery) {
 //   if (md) nquery.score = compute_score_md(nquery.pp);
 //   else nquery.score = compute_score(nquery.pp);
 //   nquery.score = compute_score(nquery.pp);
@@ -844,7 +847,7 @@ void dosearch::get_ruleinfo(const int& ruleid, const int& y, const int& xw, cons
 //   Q.push(&L[index]);
 // }
 // 
-// void dosearch_heuristic::add_known(const int& a, const int& b, const int& c, const int& d) {
+// void dovalidate_heuristic::add_known(const int& a, const int& b, const int& c, const int& d) {
 //   index++;
 //   p pp;
 //   distr iquery;
@@ -869,7 +872,7 @@ void dosearch::get_ruleinfo(const int& ruleid, const int& y, const int& xw, cons
 // }
 // 
 // // Heuristic for search order
-// int dosearch_heuristic::compute_score(const p& pp) const {
+// int dovalidate_heuristic::compute_score(const p& pp) const {
 //   int score = 0;
 //   int common_y = pp.a & target.a;
 //   int common_x = pp.c & target.c;
@@ -889,7 +892,7 @@ void dosearch::get_ruleinfo(const int& ruleid, const int& y, const int& xw, cons
 // }
 // 
 // // Heuristic for search order that takes proxy variables into account
-// int dosearch_heuristic::compute_score_md(const p& pp) const {
+// int dovalidate_heuristic::compute_score_md(const p& pp) const {
 //   int score = 0;
 //   int pp_w = pp.b - pp.c;
 //   int proxy_u = pp.a & md_p;

@@ -1,4 +1,4 @@
-Package: dosearch
+Package: dovalidate
 Title: Causal Effect Identification from Multiple Incomplete Data Sources
 Version: 1.0.12
 Authors@R: c(
@@ -45,8 +45,8 @@ Imports: Rcpp
 LinkingTo: Rcpp
 VignetteBuilder: 
     knitr
-BugReports: https://github.com/santikka/dosearch/issues
-URL: https://github.com/santikka/dosearch
+BugReports: https://github.com/mikjuhva/dovalidate
+URL: https://github.com/mikjuhva/dovalidate
 Encoding: UTF-8
 NeedsCompilation: yes
 Roxygen: list(markdown = TRUE)

@@ -1,6 +1,6 @@
-#' Call the `dosearch` Algorithm from R for DAGs
+#' Call the `dovalidate` Algorithm from R for DAGs
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @noRd
 get_derivation_dag <- function(data, query, graph, cand_formula, transportability,
                                selection_bias, missing_data, control) {
@@ -50,7 +50,7 @@ get_derivation_dag <- function(data, query, graph, cand_formula, transportabilit
   check_graph_size(2L * args$n) # times 2 due to intervention nodes
   check_valid_input(args, control, missing_data)
   print(args)
-  res <- initialize_dosearch(
+  res <- initialize_dovalidate(
     as.numeric(args$nums[args$dir_lhs]),
     as.numeric(args$nums[args$dir_rhs]),
     as.numeric(args$nums[args$bi_lhs]),
@@ -89,14 +89,14 @@ get_derivation_dag <- function(data, query, graph, cand_formula, transportabilit
         TRUE # always include the call
       )
     ],
-    class = "dosearch"
+    class = "dovalidate"
   )
 }
 
 #' Transform the Input DAG
 #'
-#' @inheritParams dosearch
-#' @param args A `list` of arguments for `initialize_dosearch`
+#' @inheritParams dovalidate
+#' @param args A `list` of arguments for `initialize_dovalidate`
 #' @param graph The graph as a `character` string.
 #' @noRd
 transform_graph_dag <- function(args, graph, missing_data, cand_formula) {
@@ -172,8 +172,8 @@ transform_graph_dag <- function(args, graph, missing_data, cand_formula) {
 
 #' Parse Missing Data Mechanisms
 #'
-#' @inheritParams dosearch
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @inheritParams dovalidate
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @noRd
 parse_missing_data <- function(args, missing_data) {
   if (is.null(missing_data)) {
@@ -208,8 +208,8 @@ parse_missing_data <- function(args, missing_data) {
 
 #' Parse Transportability Nodes
 #'
-#' @inheritParams dosearch
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @inheritParams dovalidate
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @noRd
 parse_transportability <- function(args, transportability) {
   if (is.null(transportability)) {
@@ -236,8 +236,8 @@ parse_transportability <- function(args, transportability) {
 
 #' Parse Selection Bias Nodes
 #'
-#' @inheritParams dosearch
-#' @param args A list of arguments for `initialize_dosearch`.
+#' @inheritParams dovalidate
+#' @param args A list of arguments for `initialize_dovalidate`.
 #' @noRd
 parse_selection_bias <- function(args, selection_bias) {
   if (is.null(selection_bias)) {
@@ -263,7 +263,7 @@ parse_selection_bias <- function(args, selection_bias) {
 
 #' Place Transportability and Selection Bias Nodes Last
 #'
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @noRd
 reorder_variables <- function(args) {
   if (args$n_tr == 0 && args$n_sb == 0) {
@@ -297,8 +297,8 @@ reorder_variables <- function(args) {
 
 #' Parse a Distribution in the Internal Character Format for DAGs
 #'
-#' @inheritParams dosearch
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @inheritParams dovalidate
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @param d A `character` string representing the distribution.
 #' @param type A `character` string indicating the distribution type.
 #' @param out A `character` string indicating the a name of `args` to
@@ -371,8 +371,8 @@ parse_distribution_dag <- function(args, d, type, out, i, missing_data) {
 
 #' Parse a Target Distribution
 #'
-#' @inheritParams dosearch
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @inheritParams dovalidate
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @noRd
 parse_query_dag <- function(args, query, missing_data) {
   parse_distribution_dag(
@@ -387,8 +387,8 @@ parse_query_dag <- function(args, query, missing_data) {
 
 #' Parse Input Distributions
 #'
-#' @inheritParams dosearch
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @inheritParams dovalidate
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @noRd
 parse_data_dag <- function(args, data, missing_data) {
   data_split <- strsplit(data, "\r|\n")[[1]]
@@ -410,7 +410,7 @@ parse_data_dag <- function(args, data, missing_data) {
 
 #' Check the Validity of a Distribution
 #'
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @param d An `integer` vector of length 4 denoting the distribution.
 #' @noRd
 validate_distribution_dag <- function(args, msg, d, d_str) {
@@ -494,7 +494,7 @@ validate_distribution_dag <- function(args, msg, d, d_str) {
 
 #' Check the Validity of Input Distributions
 #'
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @noRd
 validate_data_dag <- function(args) {
   args$p_list <- vector(mode = "list", length = length(args$p_process))
@@ -518,7 +518,7 @@ validate_data_dag <- function(args) {
 
 #' Check the Validity of a Target Distribution
 #'
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @noRd
 validate_query_dag <- function(args) {
   q <- args$q_process
@@ -539,7 +539,7 @@ validate_query_dag <- function(args) {
 
 #' Parse rule restrictions for rules 4 and 6.
 #'
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @param formula A `chr` latex formula including only products and sums.
 #' @noRd
 parse_path_rules <- function(args, formula) {
@@ -693,8 +693,8 @@ parse_path_rules <- function(args, formula) {
 
 #' Check Otherwise Valid Inputs For Potential Mistakes
 #'
-#' @param args A `list` of arguments for `initialize_dosearch`.
-#' @inheritParams dosearch
+#' @param args A `list` of arguments for `initialize_dovalidate`.
+#' @inheritParams dovalidate
 #' @noRd
 check_valid_input <- function(args, control, missing_data) {
   if (!control$warn) {

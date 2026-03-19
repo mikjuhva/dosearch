@@ -1,14 +1,14 @@
-#ifndef DOSEARCH_H
-#define DOSEARCH_H
+#ifndef DOVALIDATE_H
+#define DOVALIDATE_H
 
 #include "search.h"
 #include "dcongraph.h"
 #include "derivation.h"
 
 
-class dosearch: public search {
+class dovalidate: public search {
 public:
-  dosearch(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid);
+  dovalidate(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid);
   int md_s, md_p, md_t, tr, sb, trsb;
   char md_sym;
   bool md;
@@ -37,21 +37,21 @@ public:
   void get_ruleinfo(const int& ruleid, const int& y, const int& xw, const int& x, const int& d, const int& z);
   void get_candidate(distr& required, const int& req);
   void enumerate_candidates();
-  virtual ~dosearch();
+  virtual ~dovalidate();
 };
 
-class dosearch_heuristic: public dosearch {
+class dovalidate_heuristic: public dovalidate {
 public:
   struct comp_distr {
     bool operator()(distr const * d1, distr const * d2) {
       return d1->score < d2->score;
     }
   };
-  dosearch_heuristic(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid);
+  dovalidate_heuristic(const int& n_, const double& tl, const bool& bm, const bool& br, const bool& dd, const bool& da, const bool& fa, const bool& im, const bool& verb, const bool& valid);
   void add_distribution(distr& nquery);
   void add_known(const int& a, const int& b, const int& c, const int& d);
   distr& next_distribution(const int& j);
-  virtual ~dosearch_heuristic();
+  virtual ~dovalidate_heuristic();
 private:
   int compute_score(const p& pp) const;
   int compute_score_md(const p& pp) const;

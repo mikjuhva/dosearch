@@ -96,9 +96,9 @@ require_namespace <- function(package, ..., quietly = FALSE) {
   requireNamespace(package, ..., quietly = quietly)
 }
 
-#' Add New Variables to a `dosearch` Call
+#' Add New Variables to a `dovalidate` Call
 #'
-#' @param args A `list` of arguments to `initialize_dosearch`.
+#' @param args A `list` of arguments to `initialize_dovalidate`.
 #' @param new_vars A `character` vector of variable names to add.
 #' @noRd
 add_new_vars <- function(args, new_vars) {
@@ -116,7 +116,7 @@ add_new_vars <- function(args, new_vars) {
 #'
 #' @param spec_name A `character` vector of length one naming the mechanism.
 #' @param spec `transportability`, `selection_bias` or `missing_data` argument
-#'   of `dosearch`.
+#'   of `dovalidate`.
 #' @noRd
 validate_special <- function(spec_name, spec) {
   if (!is.null(spec) && (!is.character(spec) || length(spec) > 1L)) {
@@ -126,7 +126,7 @@ validate_special <- function(spec_name, spec) {
 
 #' Parse Input Distributions for Internal Processing
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @noRd
 parse_data <- function(data) {
   if (is.character(data)) {
@@ -145,7 +145,7 @@ parse_data <- function(data) {
 
 #' Parse the Target Distribution for Internal Processing
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @noRd
 parse_query <- function(query) {
   if (is.character(query)) {
@@ -224,7 +224,7 @@ parse_distribution <- function(d) {
 
 #' Parse the Graph for Internal Processing
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @noRd
 parse_graph <- function(graph) {
   if (inherits(graph, "igraph")) {
@@ -313,7 +313,7 @@ check_graph_size <- function(n) {
 
 #' Set Default Values for Control Arguments
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @noRd
 control_defaults <- function(control) {
   rules <- as.integer(control$rules)
@@ -378,9 +378,9 @@ control_defaults <- function(control) {
   control
 }
 
-#' Construct an Empty `dosearch` Object
+#' Construct an Empty `dovalidate` Object
 #'
-#' @param cl A `list` containing the original `dosearch` call arguments.
+#' @param cl A `list` containing the original `dovalidate` call arguments.
 #' @noRd
 empty_output <- function(cl) {
   structure(
@@ -389,26 +389,27 @@ empty_output <- function(cl) {
       formula = "",
       call = cl
     ),
-    class = "dosearch"
+    class = "dovalidate"
   )
 }
 
-#' Is the Argument a `dosearch` Object?
+#' Is the Argument a `dovalidate` Object?
 #'
 #' @param x An \R object.
 #' @noRd
-is_dosearch <- function(x) {
-  inherits(x, "dosearch")
+is_dovalidate <- function(x) {
+  inherits(x, "dovalidate")
 }
 
 .onUnload <- function(libpath) {
-  library.dynam.unload("dosearch", libpath)
+  library.dynam.unload("dovalidate", libpath)
 }
 
 # Parses distributions from latex formula
 parse_distributions <- function(latex_formula) {
   distributions <- regmatches(latex_formula, gregexpr("[p][^)]*\\)", latex_formula))[[1]]
   distributions <- paste(distributions, collapse = "\n")
+  print("internal")
   distributions
 }
 
@@ -416,124 +417,187 @@ parse_distributions <- function(latex_formula) {
 reorder_formula_like <- function(ref, target) {
   
   trim <- function(x) gsub("^\\s+|\\s+$", "", x)
+  no_ws <- function(x) gsub("\\s+", "", x)
   
   split_vars <- function(s) {
     s <- trim(s)
-    if (nchar(s) == 0) return(character(0))
-    parts <- unlist(strsplit(s, ",", fixed = TRUE), use.names = FALSE)
-    trim(parts[parts != ""])
+    if (identical(s, "") || is.na(s)) return(character(0))
+    trim(strsplit(s, ",", fixed = TRUE)[[1]])
   }
   
-  join_vars <- function(v) paste(v, collapse = ",")
+  join_vars <- function(x) paste(x, collapse = ",")
   
-  reorder_by <- function(vec, order) {
-    in_order <- order[order %in% vec]
-    rest <- vec[!(vec %in% in_order)]
-    c(in_order, rest)
-  }
-  
-  find_matches <- function(text, pattern) {
-    m <- gregexpr(pattern, text, perl = TRUE)[[1]]
-    if (length(m) == 1 && m[1] == -1) return(list())
-    lens <- attr(m, "match.length")
-    
-    out <- vector("list", length(m))
-    for (i in seq_along(m)) {
-      whole <- substr(text, m[i], m[i] + lens[i] - 1)
-      rr <- regexec(pattern, whole, perl = TRUE)
-      regm <- regmatches(whole, rr)[[1]]
-      out[[i]] <- list(
-        start = m[i],
-        len = lens[i],
-        whole = whole,
-        cap = if (length(regm) >= 2) regm[2] else ""
-      )
+  find_matching <- function(s, start, open, close) {
+    chars <- strsplit(s, "", fixed = TRUE)[[1]]
+    depth <- 0L
+    for (i in seq.int(start, length(chars))) {
+      if (chars[i] == open) depth <- depth + 1L
+      if (chars[i] == close) {
+        depth <- depth - 1L
+        if (depth == 0L) return(i)
+      }
     }
-    out
+    stop("Sulkevaa merkkiä ei löytynyt.")
   }
   
-  replace_matches <- function(text, pattern, ref_matches, rebuild_fun) {
-    tar_matches <- find_matches(text, pattern)
-    n <- min(length(ref_matches), length(tar_matches))
-    if (n == 0) return(text)
+  parse_expr <- function(s, pos = 1L, stop_char = NULL) {
+    factors <- list()
+    n <- nchar(s)
     
-    for (i in seq(n, 1)) {
-      new_whole <- rebuild_fun(
-        tar_matches[[i]]$whole,
-        ref_matches[[i]]$cap,
-        tar_matches[[i]]$cap
-      )
+    while (pos <= n) {
+      ch <- substr(s, pos, pos)
       
-      st <- tar_matches[[i]]$start
-      en <- st + tar_matches[[i]]$len - 1
+      if (!is.null(stop_char) && ch == stop_char) break
       
-      text <- paste0(
-        substr(text, 1, st - 1),
-        new_whole,
-        substr(text, en + 1, nchar(text))
-      )
-    }
-    
-    text
-  }
-  
-  # --- 1) reorder \sum_{...} ---
-  sum_pat <- "\\\\sum_\\{([^}]*)\\}"
-  sums_ref <- find_matches(ref, sum_pat)
-  
-  target <- replace_matches(
-    target, sum_pat, sums_ref,
-    rebuild_fun = function(whole, ref_cap, tar_cap) {
-      
-      ref_vars <- split_vars(ref_cap)
-      tar_vars <- split_vars(tar_cap)
-      
-      new_vars <- reorder_by(tar_vars, ref_vars)
-      
-      sub("\\\\sum_\\{[^}]*\\}",
-          paste0("\\\\sum_{", join_vars(new_vars), "}"),
-          whole, perl = TRUE)
-    }
-  )
-  
-  # --- 2) reorder p(...) ---
-  p_pat <- "p\\(([^)]*)\\)"
-  ps_ref <- find_matches(ref, p_pat)
-  
-  target <- replace_matches(
-    target, p_pat, ps_ref,
-    rebuild_fun = function(whole, ref_cap, tar_cap) {
-      
-      split_cond <- function(s) {
-        pos <- regexpr("\\|", s, perl = TRUE)[1]
-        if (pos == -1) return(list(left = s, right = NULL))
-        list(
-          left = substr(s, 1, pos - 1),
-          right = substr(s, pos + 1, nchar(s))
+      if (substr(s, pos, pos + 5L) == "\\sum_{") {
+        start_brace <- pos + 5L
+        end_brace <- find_matching(s, start_brace, "{", "}")
+        vars_txt <- substr(s, start_brace + 1L, end_brace - 1L)
+        vars <- split_vars(vars_txt)
+        
+        if (substr(s, end_brace + 1L, end_brace + 1L) != "[") {
+          stop("Odotettiin '[' summan jälkeen.")
+        }
+        start_bracket <- end_brace + 1L
+        end_bracket <- find_matching(s, start_bracket, "[", "]")
+        inner_txt <- substr(s, start_bracket + 1L, end_bracket - 1L)
+        inner <- parse_expr(inner_txt, 1L, NULL)$node
+        
+        factors[[length(factors) + 1L]] <- list(
+          type = "sum",
+          vars = vars,
+          expr = inner
         )
-      }
-      
-      rc <- split_cond(ref_cap)
-      tc <- split_cond(tar_cap)
-      
-      ref_left <- split_vars(rc$left)
-      tar_left <- split_vars(tc$left)
-      new_left <- reorder_by(tar_left, ref_left)
-      
-      if (is.null(tc$right)) {
-        new_inside <- join_vars(new_left)
+        pos <- end_bracket + 1L
+        
+      } else if (substr(s, pos, pos + 1L) == "p(") {
+        start_par <- pos + 1L
+        end_par <- find_matching(s, start_par, "(", ")")
+        inside <- substr(s, start_par + 1L, end_par - 1L)
+        
+        pipe_pos <- regexpr("|", inside, fixed = TRUE)[1]
+        if (pipe_pos < 0) {
+          lhs <- split_vars(inside)
+          rhs <- character(0)
+        } else {
+          lhs <- split_vars(substr(inside, 1L, pipe_pos - 1L))
+          rhs <- split_vars(substr(inside, pipe_pos + 1L, nchar(inside)))
+        }
+        
+        factors[[length(factors) + 1L]] <- list(
+          type = "dist",
+          lhs = lhs,
+          rhs = rhs
+        )
+        pos <- end_par + 1L
+        
       } else {
-        ref_right <- if (is.null(rc$right)) character(0) else split_vars(rc$right)
-        tar_right <- split_vars(tc$right)
-        new_right <- reorder_by(tar_right, ref_right)
-        new_inside <- paste0(join_vars(new_left), "|", join_vars(new_right))
+        stop(sprintf("Tuntematon rakenne kohdassa %d: '%s'", pos, substr(s, pos, pos)))
+      }
+    }
+    
+    node <- if (length(factors) == 1L) factors[[1L]] else list(type = "prod", factors = factors)
+    list(node = node, pos = pos)
+  }
+  
+  node_signature <- function(node) {
+    if (node$type == "dist") {
+      paste0(
+        "p(",
+        paste(sort(node$lhs), collapse = ","),
+        "|",
+        paste(sort(node$rhs), collapse = ","),
+        ")"
+      )
+    } else if (node$type == "sum") {
+      paste0(
+        "sum{",
+        paste(sort(node$vars), collapse = ","),
+        "}[",
+        node_signature(node$expr),
+        "]"
+      )
+    } else if (node$type == "prod") {
+      sigs <- vapply(node$factors, node_signature, character(1))
+      paste0("prod[", paste(sort(sigs), collapse = ";"), "]")
+    } else {
+      stop("Tuntematon node-tyyppi.")
+    }
+  }
+  
+  reorder_by_ref <- function(ref_vars, target_vars) {
+    idx <- match(target_vars, ref_vars)
+    if (any(is.na(idx))) {
+      stop("Targetissa on muuttujia, joita ei löytynyt referenssistä.")
+    }
+    target_vars[order(idx)]
+  }
+  
+  align_node <- function(ref_node, target_node) {
+    if (ref_node$type != target_node$type) {
+      stop("Rakenteet eivät vastaa toisiaan.")
+    }
+    
+    if (ref_node$type == "dist") {
+      list(
+        type = "dist",
+        lhs = reorder_by_ref(ref_node$lhs, target_node$lhs),
+        rhs = reorder_by_ref(ref_node$rhs, target_node$rhs)
+      )
+      
+    } else if (ref_node$type == "sum") {
+      list(
+        type = "sum",
+        vars = reorder_by_ref(ref_node$vars, target_node$vars),
+        expr = align_node(ref_node$expr, target_node$expr)
+      )
+      
+    } else if (ref_node$type == "prod") {
+      ref_factors <- ref_node$factors
+      tgt_factors <- target_node$factors
+      
+      used <- rep(FALSE, length(tgt_factors))
+      out <- vector("list", length(ref_factors))
+      
+      ref_sigs <- vapply(ref_factors, node_signature, character(1))
+      tgt_sigs <- vapply(tgt_factors, node_signature, character(1))
+      
+      for (i in seq_along(ref_factors)) {
+        hits <- which(!used & tgt_sigs == ref_sigs[i])
+        if (length(hits) == 0L) {
+          stop("Sopivaa tekijää ei löytynyt targetista.")
+        }
+        j <- hits[1L]
+        used[j] <- TRUE
+        out[[i]] <- align_node(ref_factors[[i]], tgt_factors[[j]])
       }
       
-      sub("p\\([^)]*\\)",
-          paste0("p(", new_inside, ")"),
-          whole, perl = TRUE)
+      if (length(out) == 1L) out[[1L]] else list(type = "prod", factors = out)
+      
+    } else {
+      stop("Tuntematon node-tyyppi.")
     }
-  )
+  }
   
-  target
+  render_node <- function(node) {
+    if (node$type == "dist") {
+      if (length(node$rhs) == 0L) {
+        paste0("p(", join_vars(node$lhs), ")")
+      } else {
+        paste0("p(", join_vars(node$lhs), "|", join_vars(node$rhs), ")")
+      }
+    } else if (node$type == "sum") {
+      paste0("\\sum_{", join_vars(node$vars), "}[", render_node(node$expr), "]")
+    } else if (node$type == "prod") {
+      paste(vapply(node$factors, render_node, character(1)), collapse = "")
+    } else {
+      stop("Tuntematon node-tyyppi.")
+    }
+  }
+  
+  ref_ast <- parse_expr(no_ws(ref))$node
+  target_ast <- parse_expr(no_ws(target))$node
+  
+  aligned <- align_node(ref_ast, target_ast)
+  render_node(aligned)
 }

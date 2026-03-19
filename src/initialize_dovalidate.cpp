@@ -1,5 +1,5 @@
 #include <Rcpp.h>
-#include "dosearch.h"
+#include "dovalidate.h"
 
 //' Process `dosearch` Calls from R
 //'
@@ -32,7 +32,7 @@
 //' @param validate_run Parameter for developing dosearch validation
 //' @noRd
 // [[Rcpp::export]]
-Rcpp::List initialize_dosearch(
+Rcpp::List initialize_dovalidate(
   const std::vector<int>& dir_lhs,
   const std::vector<int>& dir_rhs,
   const std::vector<int>& bi_lhs,
@@ -80,8 +80,8 @@ Rcpp::List initialize_dosearch(
 
   derivation* d = new derivation();
 
-  dosearch *s;
-  s = new dosearch(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose, validate_run);
+  dovalidate *s;
+  s = new dovalidate(n, time_limit, benchmark, benchmark_rules, draw_derivation, draw_all, formula, improve, verbose, validate_run);
 
   if (draw_derivation) s->set_derivation(d);
 

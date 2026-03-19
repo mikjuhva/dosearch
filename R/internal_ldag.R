@@ -1,6 +1,6 @@
 #' Call the `csisearch` Algorithm from R for LDAGs
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @noRd
 get_derivation_ldag <- function(data, query, graph, control = list()) {
   control <- control_defaults(control)
@@ -72,13 +72,13 @@ get_derivation_ldag <- function(data, query, graph, control = list()) {
         TRUE # always include the call
       )
     ],
-    class = "dosearch"
+    class = "dovalidate"
   )
 }
 
 #' Transform the Input LDAG
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @param args A `list` of arguments for `initialize_csisearch`
 #' @param graph The graph as a `character` string.
 #' @noRd
@@ -462,7 +462,7 @@ parse_interventions <- function(args, input_labels, vanishing) {
 
 #' Parse a Distribution in the Internal Character Format for LDAGs
 #'
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @param d A `character` string representing the distribution.
 #' @param type A `character` string indicating the distribution type.
 #' @param out A `character` string indicating the a name of `args` to
@@ -528,7 +528,7 @@ parse_distribution_ldag <- function(args, d, type, out, i) {
 
 #' Parse a Target Distribution
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @param args A `list` of arguments for `initialize_csisearch`.
 #' @noRd
 parse_query_ldag <- function(args, query) {
@@ -537,7 +537,7 @@ parse_query_ldag <- function(args, query) {
 
 #' Parse Input Distributions
 #'
-#' @inheritParams dosearch
+#' @inheritParams dovalidate
 #' @param args A `list` of arguments for `initialize_csisearch`.
 #' @noRd
 parse_data_ldag <- function(args, data) {
@@ -559,7 +559,7 @@ parse_data_ldag <- function(args, data) {
 
 #' Check the Validity of a Distribution
 #'
-#' @param args A `list` of arguments for `initialize_dosearch`.
+#' @param args A `list` of arguments for `initialize_dovalidate`.
 #' @param d An `integer` vector of length 4 denoting the distribution.
 #' @noRd
 validate_distribution_ldag <- function(args, msg, d, d_str) {

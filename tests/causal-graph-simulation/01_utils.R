@@ -184,40 +184,80 @@ children_unsrt <- function(node, G) {
   return(ch)
 }
 
-# Simulating a random clustered dag, a transit cluster for the dag,
-# and corresponding data sources. Parsing them for dosearch
+random_dag <- function(n) {
+  
+}
 
-# Generates a random igraph DAG
-# Inputs:
-# n_min = Minimum number of vertices
-# n_max = Maximum number of vertices
-# prob1, prob2 = Probabilities that an edge is created between two variables
-# in the DAG. In reverse topological order, prob1 is used until variable "x" is reached
-# and prob2 afterwards.
-# Returns:
-# graph = igraph graph
-# order = all variables in topological order
-random_dag <- function() {
-  
-  prob_dir <- runif(1)
-  prob_bi_dir <- runif(1)
-  n <- sample(3:7, 1)
-  
-  # Create a pool of variable names and randomly sample n of them
+random_graph_with_path_x_to_y <- function(n) {
+  prob_dir <- runif(1, 0.1, 0.6)
+  prob_bi_dir <- runif(1, 0.1, 0.6)
   vars <- paste0("z", 1:n)
-
   var_indexes <- 1:n
-  
-  # Force the last variable to be "y" (outcome variable)
   y_index <- sample(var_indexes, 1)
   vars[y_index] <- "y"
+  x_index <- sample(var_indexes[-y_index], 1)
+  vars[x_index] <- "x"
   
-  # Randomly select position for "x" (treatment variable) between 2 and n-1
+  # init the edges list
+  edges <- matrix(character(0), nrow = 0, ncol = 2)
   
+  # Add path from x to y
+  path_length <- sample(0:(n - 2), 1)
+  path_vars_indexes <- sample((1:n)[!(vars %in% c("x", "y"))], path_length)
+  path_vars_indexes <- c(x_index, path_vars_indexes, y_index)
+  for(i in 1:(path_length + 1)) {
+    edges <- rbind(edges, cbind(vars[path_vars_indexes[i]], vars[path_vars_indexes[i + 1]]))
+  }
+  
+  # Add directed edges
+  for (i in var_indexes) {
+    for(j in var_indexes[-i]) {
+      u <- runif(1)
+      if (u < prob_dir) {
+        if(any(edges[,1] == vars[i] & edges[,2] == vars[j])) next
+        edges <- rbind(edges, cbind(vars[i], vars[j]))
+        temp_graph <- graph_from_edgelist(edges, directed = TRUE)
+        if(!is_dag(temp_graph)) edges <- edges[-nrow(edges),]
+      }
+    }
+  } 
+  dir_edge_n <- nrow(edges)
+  
+  # Add bidirected edges
+  for (i in head(var_indexes, -1)) {
+    for(j in var_indexes[(i + 1):length(var_indexes)]) {
+      u <- runif(1)
+      if (u < prob_bi_dir) {
+        edges <- rbind(edges, cbind(vars[i], vars[j]))
+        edges <- rbind(edges, cbind(vars[j], vars[i]))
+      }
+    }
+  }
+  edges_rows_n <- nrow(edges)
+  graph_igraph <- graph_from_edgelist(edges, directed = TRUE)
+  if(edges_rows_n > dir_edge_n) graph_igraph <- set.edge.attribute(graph = graph_igraph, name = "description", index = (dir_edge_n+1):edges_rows_n, value = "U")
+  
+  vars_with_no_edge <- setdiff(vars, unique(c(edges)))
+  graph_igraph <- add_vertices(graph_igraph, length(vars_with_no_edge), attr = list(name = vars_with_no_edge)) 
+  graph_igraph
+  plot(graph_igraph)
+  return(graph_igraph)
+} 
+
+
+# Totally random dag generator
+totally_random_graph <- function(n) {
+  
+  prob_dir <- runif(1, 0.1, 0.6)
+  prob_bi_dir <- runif(1, 0.1, 0.6)
+  vars <- paste0("z", 1:n)
+  var_indexes <- 1:n
+  y_index <- sample(var_indexes, 1)
+  vars[y_index] <- "y"
   x_ind <- sample(var_indexes[-y_index], 1)
   vars[x_ind] <- "x"
-  vars
   
+  # Add directed edges
   edges <- matrix(character(0), nrow = 0, ncol = 2)
   for (i in var_indexes) {
     for(j in var_indexes[-i]) {
@@ -232,8 +272,8 @@ random_dag <- function() {
   dir_edge_n <- nrow(edges)
   
   # Add bidirected edges
-  for (i in var_indexes) {
-    for(j in var_indexes[-i]) {
+  for (i in head(var_indexes, -1)) {
+    for(j in var_indexes[(i + 1):length(var_indexes)]) {
       u <- runif(1)
       if (u < prob_bi_dir) {
         edges <- rbind(edges, cbind(vars[i], vars[j]))
@@ -242,10 +282,28 @@ random_dag <- function() {
     }
   }
   edges_rows_n <- nrow(edges)
-  dag <- graph_from_edgelist(edges, directed = TRUE)
-  if(edges_rows_n > dir_edge_n) dag <- set.edge.attribute(graph = dag, name = "description", index = (dir_edge_n+1):edges_rows_n, value = "U")
-  return(dag)
+  graph_igraph <- graph_from_edgelist(edges, directed = TRUE)
+  if(edges_rows_n > dir_edge_n) graph_igraph <- set.edge.attribute(graph = graph_igraph, name = "description", index = (dir_edge_n+1):edges_rows_n, value = "U")
+  
+  # graph_char <- ""
+  # if (dir_edge_n > 0) {
+  #   for (i in 1:dir_edge_n) {
+  #     graph_char <- paste0(graph_char, edges[i,1], " -> ", edges[i,2], "\n ")
+  #   }
+  # }
+  # 
+  # 
+  # if(edges_rows_n > dir_edge_n) {
+  #   for (i in seq(dir_edge_n + 1, edges_rows_n, by = 2)) {
+  #     graph_char <- paste0(graph_char, edges[i,1], " <-> ", edges[i,2], "\n ")
+  #   }
+  # }
+  vars_with_no_edge <- setdiff(vars, unique(c(edges)))
+  graph_igraph <- add_vertices(graph_igraph, length(vars_with_no_edge), attr = list(name = vars_with_no_edge)) 
+  return(graph_igraph)
 }
+
+
 
 random_dag_with_vars <- function(vars, prob1 = 0.5, prob2 = 0.35) {
   n <- length(vars)
@@ -344,6 +402,7 @@ random_dag_with_vars <- function(vars, prob1 = 0.5, prob2 = 0.35) {
 parse_distributions <- function(latex_formula) {
   distributions <- regmatches(latex_formula, gregexpr("[Pp][^)]*\\)", latex_formula))[[1]]
   distributions <- paste(distributions, collapse = "\n")
+  print("utils")
   distributions
 }
 
@@ -351,10 +410,10 @@ convert_formula_for_validation <- function(x) {
   if (!grepl("\\\\sum", x)) {
     return(x)
   }
+  
   x <- gsub("\\}", "}[", x)
-  if (!grepl("^\\\\sum", x)) {
-    x <- sub("\\\\sum", "]\\\\sum", x)
-  }
+  x <- gsub("\\\\right\\)", "]", x)
+  x <- gsub("\\\\left\\(", "", x)
   x <- paste0(x, "]")
   return(x)
 }
