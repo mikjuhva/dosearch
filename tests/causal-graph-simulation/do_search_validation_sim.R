@@ -6,7 +6,7 @@ devtools::load_all()
 query <- "P(y|do(x))"
 graph <- totally_random_graph(8)
 graph <- random_graph_with_path_x_to_y(6)
-ident_form_id <- causal.effect(y = "y", x = "x", G = graph)
+ident_form_id <- causal.effect(y = "y", x = "x", G = graph, primes = TRUE)
 formul <- convert_formula_for_validation(ident_form_id)
 validate_formula(formul, query, graph)
 plot(graph)
@@ -27,15 +27,10 @@ plot(res)
 edge_attr(graph)
 
 # Special cases
-load("tests/inputs/not_work_front_door.RData")
-load("tests/inputs/work_front_door.RData")
-load("tests/inputs/not_work_sum_brackets_wrong_from_id_alg.RData")
-load("tests/inputs/work_sum_brackets_wrong_from_id_alg.RData")
-load("tests/inputs/test_of_impact_of_product_order_and_sum_scopes.RData")
 load("tests/inputs/not_work_of_impact_of_product_order_and_sum_scopes2.RData")
 load("tests/inputs/work_of_impact_of_product_order_and_sum_scopes2.RData")
 
-ident_form_id <- causal.effect(y = "y", x = "x", G = graph)
+ident_form_id <- causal.effect(y = "y", x = "x", G = graph, primes = TRUE)
 ident_form_id
 plot(graph)
 formul <- convert_formula_for_validation(ident_form_id)
@@ -44,4 +39,7 @@ validate_formula(formul, query, graph)
 res
 graph <- delete_vertices(graph, 4)
 V(graph)
-formul <- "\\sum_{z2,z6}[\\sum_{x}[p(x)p(y|z2,x,z3,z6)]\\sum_{z3}[p(z2|x,z3,z6)p(z3)p(z6|x,z3)]]"
+formul <- "\\sum_{z3,z6,z2}[\\sum_{x}[P(y|x,z3,z6,z2)P(z6|x,z3)P(x)]P(z2|x,z3,z6)P(z3)]"
+
+
+"\\sum_{z2,z6}[\\sum_{x}[p(x)p(y|z2,x,z3,z6)]\\sum_{z3}[p(z2|x,z3,z6)p(z3)p(z6|x,z3)]]"

@@ -168,9 +168,10 @@ void dovalidate::derive_distribution(const distr& iquery, const distr& required,
       if (verbose) {
         if (info.rp.a > 0) Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " and " << to_string(info.rp) << " using rule: " << std::to_string(ruleid) << std::endl;
         else Rcpp::Rcout << "Derived: " << to_string(info.to) << " from " << to_string(info.from) << " using rule: " << std::to_string(ruleid) << std::endl;
+        
+        remaining++;
+        add_distribution(nquery);
       }
-      remaining++;
-      add_distribution(nquery);
     }  
   }
   

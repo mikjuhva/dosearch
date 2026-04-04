@@ -217,28 +217,21 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
   if (info.enumerate) {
     enumerate_candidates();
     cd = candidates.size();
-    Rcpp::Rcout << "Candidate size: " << cd << "\n";
     while (cd > 0 && !found) {
+
       cd--;
       get_candidate(required, candidates.top());
+      distr cand = L[candidates.top()];
+      candidates.pop();
+      path pat = cand.pat;
+      assign_candidate(required);
 
       if (validate_run) {
-        distr cand = L[candidates.top()];
-        path pat = cand.pat;
-        if (std::abs(ruleid) != pat.required_rules[0].number) {
-          //Rcpp::Rcout << "RULE SKIPPED1\n";
-          return;
-        }
-        if (check_paths(iquery.pat, pat)) {
-          //Rcpp::Rcout << "RULE SKIPPED2\n";
-          return;
+        if ((std::abs(ruleid) == pat.required_rules[0].number) & check_paths(iquery.pat, pat)) {
+          exist = ps[make_key(info.to)];
+          if (exist == 0) derive_distribution(iquery, required, ruleid, remaining, found, z);
         }
       }
-
-      candidates.pop();
-      assign_candidate(required);
-      exist = ps[make_key(info.to)];
-      if (exist == 0) derive_distribution(iquery, required, ruleid, remaining, found, z);
     }
   } else {
     exist = ps[make_key(info.to)];
@@ -252,18 +245,10 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
         if (validate_run) {
           distr cand = L[req];
           path pat = cand.pat;
-          if (pat.required_rules[0].number != 0) { // DEBUG CODE
-            if (std::abs(ruleid) != pat.required_rules[0].number) {
-              //Rcpp::Rcout << "RULE SKIPPED3\n";
-              return;
-            }
-            if (check_paths(iquery.pat, pat)) {
-              // Rcpp::Rcout << "RULE SKIPPED4\n";
-              return;
-            }
+          if ((std::abs(ruleid) == pat.required_rules[0].number) & check_paths(iquery.pat, pat)) {
+            derive_distribution(iquery, required, ruleid, remaining, found, z);
           }
         }
-        derive_distribution(iquery, required, ruleid, remaining, found, z);
       }
     } else derive_distribution(iquery, required, ruleid, remaining, found, z);
   }
@@ -271,80 +256,27 @@ void search::enumerate_distribution(const int& ruleid, const int& a, const int& 
 }
 
 bool search::check_paths(const path& path1, const path& path2) {
-  
+
   // // Paths have to be adjacent
   // int path1_min = *std::min_element(path1.id.begin(), path1.id.end());
   // int path1_max = *std::max_element(path1.id.begin(), path1.id.end());
   // int path2_min = *std::min_element(path2.id.begin(), path2.id.end());
   // int path2_max = *std::max_element(path2.id.begin(), path2.id.end());
   // if ((path1_max + 1 != path2_min) && (path2_max + 1 != path1_min)) return true;
-  
+
   // Path ids must not share any same values
   std::unordered_set<int> ids(path1.id.begin(), path1.id.end());
   for (int x : path2.id) {
     if (ids.count(x)) {
-      return true;
+      return false;
     }
   }
-  
-  // Paths have to belong same group
-  if (path1.required_rules[0].group != path2.required_rules[0].group) return true;
-  
-  return false;
-}
 
-// void search::enumerate_distribution(const int& ruleid, const int& a, const int& b, const int& c, const int& d, const int& z, int& cd, int& exist, int& req, bool& found, distr& iquery, distr& required, int& remaining) {
-//   apply_rule(ruleid, a, b, c, d, z);
-//   if (!info.valid) return;
-//   if (info.enumerate) {
-//     enumerate_candidates();
-//     cd = candidates.size();
-//     if(cd > 1) Rcpp::Rcout << "Candidates over than 1\n";
-//     while (cd > 0 && !found) {
-// 
-//       cd--;
-//       get_candidate(required, candidates.top());
-// 
-//       if (validate_run) {
-//         distr cand = L[candidates.top()];
-//         path pat = cand.pat;
-//         if ((std::abs(ruleid) == pat.required_rules[0].number) & check_paths(iquery.pat, pat)) {
-//           candidates.pop();
-//           assign_candidate(required);
-//           exist = ps[make_key(info.to)];
-//           if (exist == 0) derive_distribution(iquery, required, ruleid, remaining, found, z);
-//         }
-//       }
-//     }
-//   } else {
-//     exist = ps[make_key(info.to)];
-//     if (exist > 0) return;
-//     if (info.ri.x > 0 && !separation_criterion()) return;
-//     if (info.rp.a > 0) {
-//       req = ps[make_key(info.rp)];
-//       if (req > 0) {
-//         get_candidate(required, req);
-// 
-//         if (validate_run) {
-//           distr cand = L[req];
-//           path pat = cand.pat;
-//           if (pat.required_rules[0].number != 0) { // DEBUG CODE
-//             if (std::abs(ruleid) != pat.required_rules[0].number) {
-//               //Rcpp::Rcout << "RULE SKIPPED3\n";
-//               return;
-//             }
-//             if (check_paths(iquery.pat, pat)) {
-//               // Rcpp::Rcout << "RULE SKIPPED4\n";
-//               return;
-//             }
-//           }
-//         }
-//         derive_distribution(iquery, required, ruleid, remaining, found, z);
-//       }
-//     } else derive_distribution(iquery, required, ruleid, remaining, found, z);
-//   }
-//   return;
-// }
+  // Paths have to belong same group
+  if (path1.required_rules[0].group != path2.required_rules[0].group) return false;
+
+  return true;
+}
 
 void search::set_derivation(derivation* d_) {
   deriv = d_;
@@ -383,25 +315,3 @@ void search::draw(const distr& dist, const bool& recursive, derivation& d) {
   }
 }
 
-// bool search::check_paths(const path& path1, const path& path2) {
-//   
-//   // // Paths have to be adjacent
-//   // int path1_min = *std::min_element(path1.id.begin(), path1.id.end());
-//   // int path1_max = *std::max_element(path1.id.begin(), path1.id.end());
-//   // int path2_min = *std::min_element(path2.id.begin(), path2.id.end());
-//   // int path2_max = *std::max_element(path2.id.begin(), path2.id.end());
-//   // if ((path1_max + 1 != path2_min) && (path2_max + 1 != path1_min)) return true;
-//    
-//   // Path ids must not share any same values
-//   std::unordered_set<int> ids(path1.id.begin(), path1.id.end());
-//   for (int x : path2.id) {
-//     if (ids.count(x)) {
-//       return false;
-//     }
-//   }
-//   
-//   // Paths have to belong same group
-//   if (path1.required_rules[0].group != path2.required_rules[0].group) return false;
-//   
-//   return true;
-// }

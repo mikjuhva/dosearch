@@ -819,7 +819,7 @@ validate_formula <- function(cand_formula, query, graph) {
   data <- parse_distributions(cand_formula)
   ident_formula <- dovalidate(data, query, graph, cand_formula, control = list(validate_run = TRUE, verbose = TRUE, draw_derivation = TRUE, draw_all = FALSE))
   validate <- FALSE
-  #plot(ident_formula)
+  plot(ident_formula)
   print(cand_formula)
   print(ident_formula$formula)
   tryCatch(
